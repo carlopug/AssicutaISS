@@ -8,6 +8,11 @@ il programma pilota direttamente il dongle, demodula l'FM, decodifica l'immagine
 
 Interfaccia e schede delle immagini sono disponibili in **italiano e inglese**.
 
+> **Funziona SOLO con dongle RTL-SDR** (chip RTL2832U, per esempio RTL-SDR Blog V3/V4 e chiavette generiche
+> R820T/R820T2). Altri ricevitori come Airspy, SDRplay, HackRF o FUNcube **non sono supportati**. Con uno di
+> questi puoi comunque registrare l'audio demodulato con SDR#/SDR++ e decodificarlo con
+> **Decodifica file WAV...**.
+
 ## Funzioni
 - Ricezione diretta da RTL-SDR, demodulazione FM e decodifica Robot36 in un unico programma.
 - **Correzione Doppler** calcolata dal TLE dell'ISS (Celestrak) e applicata in tempo reale, più **AFC** che
@@ -24,7 +29,8 @@ Interfaccia e schede delle immagini sono disponibili in **italiano e inglese**.
 
 ## Requisiti
 - Windows 10/11 e Python 3.11 o successivo.
-- Un dongle RTL-SDR (RTL2832U) con il **driver WinUSB installato con Zadig**, come per SDR#/SDR++.
+- Un dongle RTL-SDR (RTL2832U), **l'unico ricevitore supportato**, con il **driver WinUSB installato con
+  Zadig**, come per SDR#/SDR++.
 - Un'antenna per i 70 cm. Una verticale basta per i passaggi alti; una Yagi puntata a mano va meglio.
 
 ## Avvio
