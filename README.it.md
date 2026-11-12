@@ -1,6 +1,6 @@
 # AssicutaISS
 
-*an ISS SSTV Receiver for Robot36*, versione 1.3 · [Read in English](README.md)
+*an ISS SSTV Receiver for Robot36*, versione 1.4 · [Read in English](README.md)
 
 Programma per Windows che riceve le immagini SSTV **Robot36** trasmesse dalla Stazione Spaziale durante gli
 eventi ARISS (437,550 MHz FM) con un dongle **RTL-SDR**. Niente SDR#/SDR++ + MMSSTV + cavo audio virtuale:
@@ -19,8 +19,8 @@ Interfaccia e schede delle immagini sono disponibili in **italiano e inglese**.
   insegue l'errore residuo sul segnale ricevuto.
 - Decoder robusto: parte dall'intestazione VIS o, se il VIS va perso per un fading, dal treno di impulsi di
   sync; correzione automatica dello slant; protezione dai falsi avvii sul rumore.
-- **Previsione dei passaggi** per la tua stazione e **avvio/arresto automatico** facoltativo a ogni passaggio,
-  saltando quelli con elevazione massima sotto una soglia a scelta (predefinita 10°).
+- **Previsione dei passaggi** per la tua stazione e **avvio/arresto automatico** facoltativo a ogni passaggio.
+  Una sola soglia («con el. max ≥», predefinita 10°) filtra sia la tabella dei passaggi sia l'avvio automatico.
 - **Attesa del dongle**: se manca, è occupato o viene scollegato, il ricevitore aspetta e riparte da solo.
 - **Ascolto** facoltativo su qualsiasi uscita audio (casse, cuffie o cavo virtuale verso un altro decoder).
 - Ogni immagine è salvata come `AAAAMMGG_HHMMSSZ.png` (UTC) con una scheda `.txt` che contiene tutti i campi
@@ -54,7 +54,7 @@ Se è occupato, AssicutaISS aspetta che si liberi.
 
 ## File di configurazione
 - `stazione.json`: dati della stazione (lingua, nominativo, nome, email, campagna ARISS, coordinate, continente,
-  elevazione minima dei passaggi, ricevitore, antenna, preamplificatore, cavo). Si modifica dalla maschera
+  ricevitore, antenna, preamplificatore, cavo). Si modifica dalla maschera
   Stazione. Non è nel repository perché contiene dati personali: `stazione.example.json` mostra il formato.
 - `config.json`: impostazioni del ricevitore (frequenza, guadagno, PPM, Doppler/AFC, ascolto...), salvate da sole.
 

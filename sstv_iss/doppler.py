@@ -141,8 +141,11 @@ class IssTracker:
                 cur = {}
         return None
 
-    def passes(self, hours=48, min_el=10.0):
-        """Lista di passaggi: dict(aos, tca, los: datetime locali, max_el: gradi)."""
+    def passes(self, hours=48, min_el=0.0):
+        """Passaggi dall'orizzonte (0°) con elevazione massima >= min_el.
+
+        dict(aos, tca, los: datetime locali, max_el: gradi); aos/los coincidono con avvio/arresto automatici.
+        """
         with self._lock:
             sat, topos = self.sat, self.topos
         if sat is None or topos is None:
@@ -150,7 +153,7 @@ class IssTracker:
         now = datetime.now(timezone.utc)
         t0 = self.ts.from_datetime(now - timedelta(minutes=15))
         t1 = self.ts.from_datetime(now + timedelta(hours=hours))
-        times, events = sat.find_events(topos, t0, t1, altitude_degrees=min_el)
+        times, events = sat.find_events(topos, t0, t1, altitude_degrees=0.0)
         out, cur = [], {}
         for t, e in zip(times, events):
             dt = t.utc_datetime().astimezone()
@@ -164,4 +167,4 @@ class IssTracker:
                 if "aos" in cur and "tca" in cur:
                     out.append(cur)
                 cur = {}
-        return [p for p in out if p["los"] > now.astimezone()]
+        return [p for p in out if p["los"] > now.astimezone() and p["max_el"] >= min_el]

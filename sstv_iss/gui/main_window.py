@@ -36,7 +36,8 @@ class MainWindow(QMainWindow):
         self.tracker = IssTracker(os.path.join(APP_DIR, "data"))
         self.engine = Engine(cfg, self.tracker)
         self.ui_q = queue.Queue()             # funzioni da eseguire nel thread GUI
-        self.passes = []
+        self.passes = []            # passaggi mostrati (el. max >= soglia)
+        self.all_passes = []        # tutti i passaggi delle prossime 48 h
         self.last_img_ver = -1
         self.auto_started = False
         self._auto_pass = None      # passaggio valutato per l'avvio automatico (cache fino al LOS)
@@ -113,12 +114,12 @@ class MainWindow(QMainWindow):
         for c in (self.chk_doppler, self.chk_afc, self.chk_bias, self.chk_wav, self.chk_auto):
             c.toggled.connect(self._checks_changed)
             bar2.addWidget(c)
-        bar2.addWidget(QLabel(tr("se el. max ≥")))
+        bar2.addWidget(QLabel(tr("con el. max ≥")))
         self.auto_min_el = QSpinBox()
         self.auto_min_el.setRange(0, 90)
         self.auto_min_el.setSuffix("°")
-        self.auto_min_el.setToolTip(tr("L'avvio automatico salta i passaggi la cui elevazione massima "
-                                       "è inferiore a questo valore"))
+        self.auto_min_el.setToolTip(tr("Soglia unica: la tabella mostra e l'avvio automatico riceve solo "
+                                       "i passaggi con elevazione massima almeno pari a questo valore"))
         self.auto_min_el.valueChanged.connect(self._auto_min_el_changed)
         bar2.addWidget(self.auto_min_el)
         bar2.addSpacing(24)
@@ -229,7 +230,8 @@ class MainWindow(QMainWindow):
         gi.addWidget(self.lbl_tle)
         ll.addWidget(g_iss)
 
-        g_pass = QGroupBox(tr("Prossimi passaggi (48 h)"))
+        g_pass = QGroupBox()
+        self.g_pass = g_pass
         gp = QVBoxLayout(g_pass)
         self.tbl = QTableWidget(0, 4)
         self.tbl.setHorizontalHeaderLabels([tr("Giorno"), tr("Inizio"), tr("Fine"), tr("El. max")])
@@ -365,21 +367,22 @@ class MainWindow(QMainWindow):
         self._compute_passes()
 
     def _compute_passes(self):
-        p = self.tracker.passes(48, self.cfg.min_el)
+        p = self.tracker.passes(48, 0.0)
         self.ui_q.put(lambda: self._show_passes(p))
 
-    def _show_passes(self, passes):
+    def _show_passes(self, all_passes):
+        now = datetime.now().astimezone()
+        self.all_passes = [p for p in all_passes if p["los"] > now]
+        passes = [p for p in self.all_passes if p["max_el"] >= self.cfg.auto_min_el]
         self.passes = passes
+        self.g_pass.setTitle(tr("Prossimi passaggi (48 h, el. max ≥ {e:.0f}°)", e=self.cfg.auto_min_el))
         self.tbl.setRowCount(len(passes))
         for r, p in enumerate(passes):
             vals = [f"{weekday(p['aos'])} {p['aos']:%d/%m}", f"{p['aos']:%H:%M:%S}", f"{p['los']:%H:%M:%S}", f"{p['max_el']:.0f}°"]
             for c, v in enumerate(vals):
                 it = QTableWidgetItem(v)
                 it.setTextAlignment(Qt.AlignCenter)
-                if p["max_el"] < self.cfg.auto_min_el:
-                    it.setForeground(Qt.gray)
-                    it.setToolTip(tr("Sotto la soglia dell'avvio automatico"))
-                elif p["max_el"] >= 40:
+                if p["max_el"] >= 40:
                     it.setForeground(Qt.darkGreen)
                 self.tbl.setItem(r, c, it)
 
@@ -452,7 +455,7 @@ class MainWindow(QMainWindow):
         if getattr(self, "_loading", False):
             return
         self.cfg.auto_min_el = float(v)
-        self._show_passes(self.passes)
+        self._show_passes(self.all_passes)
         self._settings_changed()
 
     def _offset_changed(self, v):
@@ -585,9 +588,9 @@ class MainWindow(QMainWindow):
         elif self.passes == [] and self.tracker.ready:
             self.lbl_next.setText(tr("Nessun passaggio nelle prossime 48 h"))
         # ricalcolo passaggi quando la lista si esaurisce
-        if self.tracker.ready and self.passes and self.passes[0]["los"] < now:
-            self.passes = self.passes[1:]
-            if len(self.passes) < 3:
+        if self.tracker.ready and self.all_passes and self.all_passes[0]["los"] < now:
+            self._show_passes(self.all_passes)
+            if len(self.all_passes) < 3:
                 self._bg(self._compute_passes)
         # avvio/arresto automatico (orizzonte: elevazione > -1°)
         if self.cfg.auto_pass and look:

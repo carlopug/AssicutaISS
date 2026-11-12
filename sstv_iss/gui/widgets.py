@@ -169,7 +169,6 @@ class StationDialog(QDialog):
         self.continent = QComboBox()
         self.continent.addItems(CONTINENTS)
         self.continent.setCurrentText(cfg.continent if cfg.continent in CONTINENTS else "Europe")
-        self.min_el = self._spin(0, 60, cfg.min_el, 0, "°")
         for s in (self.lat, self.lon):
             s.valueChanged.connect(self._update_grid)
         f2.addRow(tr("Latitudine (N +)"), self.lat)
@@ -177,7 +176,6 @@ class StationDialog(QDialog):
         f2.addRow(tr("Altitudine s.l.m."), self.alt)
         f2.addRow(tr("Locator (calcolato)"), self.grid)
         f2.addRow(tr("Continente"), self.continent)
-        f2.addRow(tr("Elevazione minima passaggi"), self.min_el)
         self._update_grid()
 
         # --- attrezzatura
@@ -249,7 +247,7 @@ class StationDialog(QDialog):
         cfg.category = self.category.currentData() or ""
         cfg.campaign = self.campaign.currentText().strip()
         cfg.lat, cfg.lon = self.lat.value(), self.lon.value()
-        cfg.alt_m, cfg.min_el = self.alt.value(), self.min_el.value()
+        cfg.alt_m = self.alt.value()
         cfg.continent = self.continent.currentText()
         cfg.receiver = self.receiver.text().strip()
         cfg.rx_sensitivity = self.sens.text().strip()

@@ -153,7 +153,7 @@ footer { color: var(--muted); font-size: var(--step--1); border-top: 1px solid v
   <header class="top">
     <span class="label">Guida rapida · RTL-SDR → Robot36</span>
     <h1>AssicutaISS</h1>
-    <p class="label">an ISS SSTV Receiver for Robot36 · v. 1.3</p>
+    <p class="label">an ISS SSTV Receiver for Robot36 · v. 1.4</p>
     <p class="read">Come ricevere le immagini SSTV della Stazione Spaziale con il dongle RTL-SDR, dall'avvio del programma all'immagine salvata. Il programma segue da solo il Doppler: tu devi solo farlo partire prima del passaggio.</p>
     <div class="freqline">
       <span>Frequenza <b>437,550 MHz FM</b></span>
@@ -215,7 +215,7 @@ footer { color: var(--muted); font-size: var(--step--1); border-top: 1px solid v
     </div>
     <dl class="legend">
       <div><dt>A</dt><dd><b>Comandi.</b> Avvio/arresto, frequenza (lascia 437,550), guadagno, correzione PPM del dongle, offset manuale, soglia che attiva l'AFC.</dd></div>
-      <div><dt>B</dt><dd><b>Opzioni e ascolto.</b> Lascia sempre attivi Doppler e AFC. «Avvio automatico» accende e spegne il ricevitore a ogni passaggio la cui elevazione massima supera il valore «se el. max ≥» (10° di base); i passaggi più bassi vengono saltati e restano in grigio nella tabella. «Ascolto» fa sentire il segnale sull'uscita scelta, comprese cuffie o cavo virtuale verso MMSSTV. Parti con il volume basso: senza segnale il fruscio è forte.</dd></div>
+      <div><dt>B</dt><dd><b>Opzioni e ascolto.</b> Lascia sempre attivi Doppler e AFC. «Avvio automatico» accende e spegne il ricevitore a ogni passaggio. Il valore «con el. max ≥» è l'unica soglia: la tabella mostra e l'avvio automatico riceve solo i passaggi che salgono almeno fin lì (0° = tutti). «Ascolto» fa sentire il segnale sull'uscita scelta, comprese cuffie o cavo virtuale verso MMSSTV. Parti con il volume basso: senza segnale il fruscio è forte.</dd></div>
       <div><dt>C</dt><dd><b>Frequenze.</b> Correzione Doppler calcolata dall'orbita, correzione AFC misurata sul segnale e frequenza su cui si sta ascoltando.</dd></div>
       <div><dt>D</dt><dd><b>Segnale.</b> Barra SNR e stato del decoder: «In attesa» oppure la riga in decodifica su 240. In arancione compare «In attesa del dongle…» se il dongle manca o è occupato.</dd></div>
       <div><dt>E</dt><dd><b>ISS.</b> Posizione attuale, conto alla rovescia e passaggi delle prossime 48 ore. In verde quelli oltre 40°.</dd></div>
@@ -305,7 +305,7 @@ footer { color: var(--muted); font-size: var(--step--1); border-top: 1px solid v
     </div>
   </section>
 
-  <footer>AssicutaISS v. 1.3 · ARISS SSTV Series 35, 9-16 novembre · RTL2832U + R820T2</footer>
+  <footer>AssicutaISS v. 1.4 · ARISS SSTV Series 35, 9-16 novembre · RTL2832U + R820T2</footer>
 </div>
 
 <script>

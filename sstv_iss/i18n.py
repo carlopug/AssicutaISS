@@ -54,7 +54,7 @@ EN = {
     "TLE: caricamento...": "TLE: loading...",
     "Stazione e nominativo...": "Station and callsign...",
     "Aggiorna TLE": "Update TLE",
-    "Prossimi passaggi (48 h)": "Upcoming passes (48 h)",
+    "Prossimi passaggi (48 h, el. max ≥ {e:.0f}°)": "Upcoming passes (48 h, max el. ≥ {e:.0f}°)",
     "Giorno": "Day",
     "Inizio": "Start",
     "Fine": "End",
@@ -153,7 +153,6 @@ EN = {
     "Altitudine s.l.m.": "Altitude a.s.l.",
     "Locator (calcolato)": "Locator (computed)",
     "Continente": "Continent",
-    "Elevazione minima passaggi": "Minimum pass elevation",
     "Attrezzatura": "Equipment",
     "Dati richiesti da ARISS per caratterizzare il segnale SSTV.":
         "Data requested by ARISS to characterize the SSTV signal.",
@@ -196,11 +195,13 @@ EN = {
     "Offset di sintonia del dongle": "Dongle tuning offset",
 
     # ---- elevazione minima per l'avvio automatico
-    "Elevazione minima per l'avvio automatico": "Minimum elevation for auto-start",
-    "se el. max ≥": "if max el. ≥",
-    "L'avvio automatico salta i passaggi la cui elevazione massima è inferiore a questo valore":
-        "Auto-start skips passes whose maximum elevation is below this value",
-    "Sotto la soglia dell'avvio automatico": "Below the auto-start threshold",
+    "Elevazione massima minima dei passaggi (tabella e avvio automatico)":
+        "Minimum pass maximum elevation (table and auto-start)",
+    "con el. max ≥": "with max el. ≥",
+    "Soglia unica: la tabella mostra e l'avvio automatico riceve solo i passaggi con elevazione massima "
+    "almeno pari a questo valore":
+        "Single threshold: the table shows and auto-start receives only passes whose maximum elevation "
+        "is at least this value",
     "Avvio automatico: passaggio saltato, el. max {e:.0f}° sotto la soglia di {s:.0f}°":
         "Auto-start: pass skipped, max el. {e:.0f}° below the {s:.0f}° threshold",
     "Avvio automatico: ISS in arrivo (el. max {e})": "Auto-start: ISS approaching (max el. {e})",

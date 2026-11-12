@@ -3,6 +3,13 @@
 Numerazione MAJOR.MINOR: la minor version si incrementa a ogni modifica al programma.
 Il numero sta in `sstv_iss/__init__.py` (`__version__`) e compare nel titolo della finestra.
 
+## 1.4 - 12/11/2026
+- Una sola soglia di elevazione massima per tabella dei passaggi e avvio automatico (campo «con el. max ≥»
+  accanto ad «Avvio automatico ai passaggi»); tolta l'elevazione minima dalla maschera Stazione.
+- La tabella calcola i passaggi dall'orizzonte: inizio e fine coincidono con avvio e arresto automatici,
+  e il titolo mostra la soglia in uso.
+- Il vecchio valore `min_el` di `stazione.json` viene usato come soglia iniziale se `config.json` non ne ha una.
+
 ## 1.3 - 12/11/2026
 - Elevazione minima per l'avvio automatico (campo «se el. max ≥», predefinito 10°): i passaggi con
   elevazione massima inferiore vengono saltati, con una riga nel registro. Per quelli validi la ricezione

@@ -19,7 +19,6 @@ class Config:
     lon: float = 0.0
     alt_m: float = 0.0
     continent: str = "Europe"
-    min_el: float = 10.0
     campaign: str = "Expedition 75 - ARISS Series 35 Space Memories"
     receiver: str = "RTL-SDR (RTL2832U + R820T2)"
     rx_sensitivity: str = "approx. 0.5 uV (-113 dBm), typical"
@@ -48,7 +47,7 @@ class Config:
     monitor_volume: int = 30        # 0..100
     monitor_mute: bool = False      # silenzia quando lo squelch è chiuso
     auto_pass: bool = False
-    auto_min_el: float = 10.0       # avvio automatico solo se l'elevazione massima del passaggio è almeno questa
+    auto_min_el: float = 10.0       # soglia unica: tabella e avvio automatico solo per passaggi con el. max >= questa
     images_dir: str = os.path.join(APP_DIR, "images")
     if_offset_hz: int = 250_000
 
@@ -60,17 +59,23 @@ class Config:
     def load(cls):
         cfg = cls()
         names = {f.name for f in fields(cls)}
+        seen = {}
         for path, keys in ((CONFIG_PATH, names - set(STATION_KEYS)), (STATION_PATH, set(STATION_KEYS))):
             if not os.path.exists(path):
                 continue
             try:
                 with open(path, encoding="utf-8") as f:
                     data = json.load(f)
+                seen[path] = data
                 for k, v in data.items():
                     if k in keys:
                         setattr(cfg, k, v)
             except Exception:
                 pass
+        # fino alla 1.3 la tabella aveva una soglia sua (min_el in stazione.json): diventa la soglia unica
+        old = seen.get(STATION_PATH, {})
+        if "min_el" in old and "auto_min_el" not in seen.get(CONFIG_PATH, {}):
+            cfg.auto_min_el = float(old["min_el"])
         return cfg
 
     def save(self):
@@ -86,6 +91,6 @@ class Config:
 
 
 STATION_PATH = os.path.join(APP_DIR, "stazione.json")
-STATION_KEYS = ("language", "callsign", "operator_name", "email", "category", "lat", "lon", "alt_m", "continent", "min_el",
+STATION_KEYS = ("language", "callsign", "operator_name", "email", "category", "lat", "lon", "alt_m", "continent",
                 "campaign", "receiver", "rx_sensitivity", "rx_nf_db", "antenna", "antenna_gain_dbi", "preamp",
                 "preamp_gain_db", "cable", "cable_loss_db", "station_notes")

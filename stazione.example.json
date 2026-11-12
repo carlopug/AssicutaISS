@@ -8,7 +8,6 @@
   "lon": 12.4964,
   "alt_m": 50.0,
   "continent": "Europe",
-  "min_el": 10.0,
   "campaign": "Expedition 75 - ARISS Series 35 Space Memories",
   "receiver": "RTL-SDR (RTL2832U + R820T2)",
   "rx_sensitivity": "approx. 0.5 uV (-113 dBm), typical",
