@@ -12,6 +12,9 @@ config.json
 # --- Ricezioni: immagini, schede ARISS (contengono l'email), registrazioni ---
 images/
 
+# --- Registri di sessione (contengono nominativo e impostazioni) ---
+logs/
+
 # --- Cache dei dati orbitali (riscaricati da Celestrak) ---
 data/
 

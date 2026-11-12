@@ -12,13 +12,14 @@ from PySide6.QtWidgets import (QCheckBox, QComboBox, QDoubleSpinBox, QFileDialog
                                QProgressBar, QPushButton, QSlider, QSpinBox, QSplitter, QTableWidget,
                                QTableWidgetItem, QVBoxLayout, QWidget)
 
-from .. import WINDOW_TITLE, audio_out
+from .. import WINDOW_TITLE, __version__, audio_out
 from ..config import APP_DIR
 from ..i18n import tr, weekday
 from ..doppler import IssTracker
 from ..engine import Engine
 from ..sdr_source import R820T_GAINS
 from ..report import maidenhead, write_report
+from ..telemetry import SessionLog, settings_diff, settings_items, settings_text
 from ..sstv.robot36 import decode_audio_file
 from .widgets import Gallery, LiveImage, StationDialog, WaterfallWidget
 
@@ -39,6 +40,11 @@ class MainWindow(QMainWindow):
         self.last_img_ver = -1
         self.auto_started = False
         self.lang_at_start = cfg.language
+        self.session_log = SessionLog()
+        self._settings = dict(settings_items(cfg))
+        self._diff_timer = QTimer(self)
+        self._diff_timer.setSingleShot(True)
+        self._diff_timer.timeout.connect(self._log_settings_diff)
         self.setWindowTitle(WINDOW_TITLE)
         self.resize(1400, 820)
         self._build()
@@ -53,6 +59,9 @@ class MainWindow(QMainWindow):
 
         if cfg.station_set:
             self.tracker.set_station(cfg.lat, cfg.lon, cfg.alt_m)
+        self.log_msg(tr("{app} avviato. Registro: {p}", app=WINDOW_TITLE, p=self.session_log.path or "-")
+                     + "\n" + tr("Impostazioni:") + "\n" + settings_text(cfg))
+        self._settings = dict(settings_items(cfg))
         self._bg(self._load_tle_and_passes)
         if not cfg.station_set:
             QTimer.singleShot(300, self._edit_station)
@@ -143,7 +152,8 @@ class MainWindow(QMainWindow):
         self.squelch.setDecimals(1)
         self.squelch.setSuffix(" dB")
         self.squelch.valueChanged.connect(
-            lambda v: None if getattr(self, "_loading", False) else setattr(self.cfg, "squelch_db", v))
+            lambda v: None if getattr(self, "_loading", False) else (setattr(self.cfg, "squelch_db", v),
+                                                                       self._settings_changed()))
         bar.addWidget(self.squelch)
         bar.addStretch(1)
         root.addLayout(bar)
@@ -271,6 +281,7 @@ class MainWindow(QMainWindow):
         # curva quadratica: il fruscio FM è quasi a fondo scala, serve finezza sui valori bassi
         self.engine.monitor.volume = (self.cfg.monitor_volume / 100.0) ** 2
         self.engine.monitor.mute_without_signal = self.cfg.monitor_mute
+        self._settings_changed()
 
     def _monitor_changed(self):
         if getattr(self, "_loading", False):
@@ -279,6 +290,7 @@ class MainWindow(QMainWindow):
         c.monitor = self.chk_mon.isChecked()
         c.monitor_device = self.cmb_out.currentData() or ""
         mon = self.engine.monitor
+        self._settings_changed()
         if not c.monitor:
             if mon.active:
                 mon.stop()
@@ -316,6 +328,17 @@ class MainWindow(QMainWindow):
     # =========================================================== azioni
     def log_msg(self, text):
         self.log.appendPlainText(f"{datetime.now():%H:%M:%S}  {text}")
+        self.session_log.write(text)
+
+    def _settings_changed(self):
+        """Da chiamare dopo ogni modifica: dopo 1,5 s di calma registra le differenze."""
+        self._diff_timer.start(1500)
+
+    def _log_settings_diff(self):
+        new = dict(settings_items(self.cfg))
+        for line in settings_diff(self._settings, new):
+            self.log_msg(tr("Impostazione modificata - {c}", c=line))
+        self._settings = new
 
     def _bg(self, fn):
         def run():
@@ -353,6 +376,7 @@ class MainWindow(QMainWindow):
             self.cfg.save_station()
             self.tracker.set_station(self.cfg.lat, self.cfg.lon, self.cfg.alt_m)
             c = self.cfg
+            self._log_settings_diff()
             self.log_msg(tr("Stazione {call}: {lat:.4f}, {lon:.4f}, {alt:.0f} m, locator {grid} - salvata in stazione.json",
                             call=c.callsign or "SWL", lat=c.lat, lon=c.lon, alt=c.alt_m, grid=maidenhead(c.lat, c.lon)))
             if c.language != self.lang_at_start:
@@ -373,6 +397,12 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, tr("Errore ricevitore"), str(e))
             self.log_msg(str(e))
             return False
+        self._log_settings_diff()
+        look = self.tracker.look()
+        iss = tr("ISS: az {az:.0f}°, el {el:+.1f}°, distanza {d:.0f} km", az=look[0], el=look[1], d=look[2]) \
+            if look else tr("ISS: posizione non disponibile")
+        self.log_msg(tr("=== Avvio ricezione (AssicutaISS v. {v}) ===", v=__version__) + "\n"
+                     + settings_text(self.cfg) + "\n  " + iss + "\n  " + self.lbl_tle.text())
         self.btn_start.setText(tr("■  Ferma ricezione"))
         self.btn_start.setStyleSheet("font-weight:bold; padding:6px; background:#c62828; color:white;")
         return True
@@ -389,22 +419,26 @@ class MainWindow(QMainWindow):
             self.engine.retune()
             self.engine.reset_afc()
             self.cfg.save()
+            self._settings_changed()
 
     def _gain_changed(self):
         if getattr(self, "_loading", False):
             return
         self.cfg.gain_db = float(self.gain.currentData())
         self.engine.set_gain(self.cfg.gain_db)
+        self._settings_changed()
 
     def _ppm_changed(self):
         if self.ppm.value() != self.cfg.ppm:
             self.cfg.ppm = self.ppm.value()
             self.engine.set_ppm(self.cfg.ppm)
+            self._settings_changed()
 
     def _offset_changed(self, v):
         if getattr(self, "_loading", False):
             return
         self.cfg.manual_offset_hz = float(v)
+        self._settings_changed()
 
     def _checks_changed(self):
         if getattr(self, "_loading", False):
@@ -419,6 +453,7 @@ class MainWindow(QMainWindow):
             c.record_wav = wav
             if self.engine.running:
                 self.engine.start_wav() if wav else self.engine.stop_wav()
+        self._settings_changed()
 
     def _decode_file(self):
         path, _ = QFileDialog.getOpenFileName(self, tr("Decodifica registrazione audio"), self.cfg.images_dir,
@@ -562,5 +597,13 @@ class MainWindow(QMainWindow):
     def closeEvent(self, e):
         self.engine.stop()
         self.engine.monitor.stop()
+        while not self.engine.events.empty():   # ultimi messaggi dell'engine (es. "Ricevitore fermato")
+            try:
+                self._handle_event(*self.engine.events.get_nowait())
+            except Exception:
+                break
+        self._log_settings_diff()
+        self.log_msg(tr("Programma chiuso"))
+        self.session_log.close()
         self.cfg.save()
         super().closeEvent(e)

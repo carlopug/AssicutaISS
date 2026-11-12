@@ -153,7 +153,7 @@ footer { color: var(--muted); font-size: var(--step--1); border-top: 1px solid v
   <header class="top">
     <span class="label">Guida rapida · RTL-SDR → Robot36</span>
     <h1>AssicutaISS</h1>
-    <p class="label">an ISS SSTV Receiver for Robot36 · v. 1.1</p>
+    <p class="label">an ISS SSTV Receiver for Robot36 · v. 1.2</p>
     <p class="read">Come ricevere le immagini SSTV della Stazione Spaziale con il dongle RTL-SDR, dall'avvio del programma all'immagine salvata. Il programma segue da solo il Doppler: tu devi solo farlo partire prima del passaggio.</p>
     <div class="freqline">
       <span>Frequenza <b>437,550 MHz FM</b></span>
@@ -281,6 +281,8 @@ footer { color: var(--muted); font-size: var(--step--1); border-top: 1px solid v
       <div class="file"><span class="mono">images/20261112_000312Z.png</span><p>L'immagine, 320 × 240. Il nome è solo data e ora UTC di inizio ricezione (la Z indica UTC), come chiede il modulo ARISS.</p></div>
       <div class="file"><span class="mono">images/20261112_000312Z.txt</span><p>La scheda: tutti i campi del modulo ARISS già compilati, i commenti da incollare (S-meter stimato, AOS/LOS, antenna, cavo), lo stato dell'immagine (completa o parziale) e i dettagli della ricezione.</p></div>
       <div class="file"><span class="mono">images/rec_….wav</span><p>Audio demodulato, solo con «Registra WAV». Si può ridecodificare con «Decodifica file WAV…». Tienilo attivo: una registrazione reale serve a ritoccare le soglie del decoder.</p></div>
+      <div class="file"><span class="mono">images/rec_….csv</span><p>Accanto a ogni WAV: una riga al secondo con SNR, Doppler, AFC, guadagno, elevazione dell'ISS e stato del decoder. Serve a capire com'è andato un passaggio.</p></div>
+      <div class="file"><span class="mono">logs/AAAAMMGG_HHMMSSZ.log</span><p>Il registro di ogni sessione: impostazioni complete a ogni avvio della ricezione, ogni modifica (vecchio → nuovo), una riga di stato ogni 30 s, immagini e scarti.</p></div>
       <div class="file"><span class="mono">stazione.json · config.json</span><p>Dati fissi della stazione (nominativo, posizione, attrezzatura, campagna ARISS), modificabili da «Stazione e nominativo…», e impostazioni del ricevitore.</p></div>
     </div>
     <p class="read">Per inviare un'immagine alla galleria ARISS apri il suo <code>.txt</code> e copia i campi nel modulo su <a href="https://ariss-usa.org/ARISS_SSTV/submit.php">ariss-usa.org/ARISS_SSTV/submit.php</a>. Le richieste di certificato si accettano solo per circa 72 ore dopo la fine dell'evento.</p>
@@ -303,7 +305,7 @@ footer { color: var(--muted); font-size: var(--step--1); border-top: 1px solid v
     </div>
   </section>
 
-  <footer>AssicutaISS v. 1.1 · ARISS SSTV Series 35, 9-16 novembre · RTL2832U + R820T2</footer>
+  <footer>AssicutaISS v. 1.2 · ARISS SSTV Series 35, 9-16 novembre · RTL2832U + R820T2</footer>
 </div>
 
 <script>

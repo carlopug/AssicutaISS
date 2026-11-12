@@ -175,6 +175,27 @@ EN = {
     "Perdita cavo stimata": "Estimated cable loss",
     "Note": "Notes",
 
+    # ---- registro di sessione e telemetria
+    "{app} avviato. Registro: {p}": "{app} started. Log file: {p}",
+    "Impostazioni:": "Settings:",
+    "Impostazione modificata - {c}": "Setting changed - {c}",
+    "ISS: az {az:.0f}°, el {el:+.1f}°, distanza {d:.0f} km": "ISS: az {az:.0f}°, el {el:+.1f}°, range {d:.0f} km",
+    "ISS: posizione non disponibile": "ISS: position not available",
+    "=== Avvio ricezione (AssicutaISS v. {v}) ===": "=== Reception started (AssicutaISS v. {v}) ===",
+    "Programma chiuso": "Program closed",
+    "Telemetria al secondo: {p}": "Per-second telemetry: {p}",
+    ", ISS el {el:.1f}°": ", ISS el {el:.1f}°",
+    "Stato: SNR {m:.1f} dB (max {x:.1f}), Doppler {d:+.0f} Hz, AFC {a:+.0f} Hz{el}":
+        "Status: SNR {m:.1f} dB (max {x:.1f}), Doppler {d:+.0f} Hz, AFC {a:+.0f} Hz{el}",
+    "attivo": "on",
+    "disattivo": "off",
+    "automatico": "auto",
+    "uscita predefinita": "default output",
+    "silenziato senza segnale": "muted without signal",
+    "{s}, limite ±{l:.0f} Hz": "{s}, limit ±{l:.0f} Hz",
+    "De-enfasi": "De-emphasis",
+    "Offset di sintonia del dongle": "Dongle tuning offset",
+
     # ---- scheda .txt
     "(non impostato)": "(not set)",
     "(da compilare)": "(to be filled in)",

@@ -3,6 +3,14 @@
 Numerazione MAJOR.MINOR: la minor version si incrementa a ogni modifica al programma.
 Il numero sta in `sstv_iss/__init__.py` (`__version__`) e compare nel titolo della finestra.
 
+## 1.2 - 12/11/2026
+- Registro di sessione su file: `logs/AAAAMMGG_HHMMSSZ.log` (UTC), con tutto quello che compare nella finestra.
+- Impostazioni complete del ricevitore e della stazione registrate all'avvio del programma e a ogni avvio
+  della ricezione (con posizione dell'ISS ed epoca del TLE); ogni modifica registrata come «vecchio → nuovo».
+- Durante la ricezione, una riga di stato ogni 30 s: SNR medio e massimo, Doppler, AFC, elevazione ISS.
+- Accanto a ogni WAV un file `.csv` con una riga al secondo: SNR, presenza di segnale, Doppler, AFC,
+  frequenza effettiva, guadagno, PPM, azimut/elevazione/distanza ISS, stato del decoder, overflow IQ.
+
 ## 1.1 - 12/11/2026
 - Interfaccia, messaggi del registro e schede .txt disponibili in italiano e inglese; la lingua si sceglie
   nella maschera Stazione (campo `language` di `stazione.json`) e il programma propone di riavviarsi.

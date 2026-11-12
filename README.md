@@ -1,6 +1,6 @@
 # AssicutaISS
 
-*an ISS SSTV Receiver for Robot36*, version 1.1 · [Leggi in italiano](README.it.md)
+*an ISS SSTV Receiver for Robot36*, version 1.2 · [Leggi in italiano](README.it.md)
 
 A Windows desktop program that receives the **Robot36** SSTV images transmitted by the International Space
 Station during ARISS events (437.550 MHz FM) with an **RTL-SDR** dongle. No SDR#/SDR++ + MMSSTV + virtual
@@ -25,6 +25,8 @@ The interface and the image reports are available in **Italian and English**.
   [ARISS SSTV Gallery](https://ariss-usa.org/ARISS_SSTV/submit.php) form, ready-to-paste comments
   (estimated S-meter, AOS/LOS, equipment) and the reception details.
 - WAV recording of the demodulated audio and decoding of WAV files (also recordings made with SDR#/SDR++).
+  Each recording gets a `.csv` with per-second telemetry (SNR, Doppler, AFC, ISS elevation, decoder state).
+- Session log in `logs/`, with the full settings at every start of reception and every setting change.
 
 ## Requirements
 - Windows 10/11 and Python 3.11 or later.

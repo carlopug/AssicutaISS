@@ -12,6 +12,7 @@ from .audio_out import AudioMonitor
 from .i18n import tr
 from .receiver import BLOCK, FS_AUDIO, FS_IN, Receiver
 from .report import write_report
+from .telemetry import TelemetryCsv
 from .sdr_source import DongleUnavailable, RtlSource
 from .sstv.robot36 import Robot36Decoder
 
@@ -21,7 +22,8 @@ DOPPLER_REFRESH_S = 0.5
 # a vuoto l'SNR misurato sta fra -8 e -3 dB
 SIGNAL_GATE_DB = 0.5
 RETRY_S = 3.0               # intervallo fra i tentativi di apertura del dongle
-DATA_TIMEOUT_S = 3.0        # senza dati per questo tempo il dongle è considerato perso
+DATA_TIMEOUT_S = 3.0
+STATUS_LOG_S = 30.0          # riga di stato nel registro durante la ricezione        # senza dati per questo tempo il dongle è considerato perso
 
 
 class Engine:
@@ -46,6 +48,11 @@ class Engine:
         self.squelch_open = False
         self.wav = None
         self.wav_path = None
+        self.csv = None
+        self._sec = None            # secondo in corso per la telemetria
+        self._sec_snr = []
+        self._sec_sig = False
+        self._last_status = 0.0
         self.spec_freqs = None
 
     # ---------------------------------------------------------- controllo
@@ -179,12 +186,21 @@ class Engine:
         w.setsampwidth(2)
         w.setframerate(FS_AUDIO)
         self.wav = w
+        try:
+            self.csv = TelemetryCsv(self.wav_path)
+        except OSError:
+            self.csv = None
         self.events.put(("log", tr("Registrazione audio: {p}", p=self.wav_path)))
+        if self.csv:
+            self.events.put(("log", tr("Telemetria al secondo: {p}", p=self.csv.path)))
 
     def stop_wav(self):
         w, self.wav = self.wav, None
         if w:
             w.close()
+        c, self.csv = self.csv, None
+        if c:
+            c.close()
 
     # ---------------------------------------------------------------- DSP
     def _doppler_now(self):
@@ -222,12 +238,54 @@ class Engine:
             with self.lock:
                 self.decoder.feed(r["audio"], signal_present=self.snr_db >= SIGNAL_GATE_DB)
             self.monitor.push(r["audio"], signal_present=self.squelch_open)
+            self._telemetry(dop)
             if self.wav:
                 pcm = np.clip(r["audio"] * 16000, -32767, 32767).astype("<i2")
                 try:
                     self.wav.writeframes(pcm.tobytes())
                 except Exception:
                     pass
+
+    def _telemetry(self, dop):
+        """Aggrega l'SNR per secondo: riga nel CSV accanto al WAV e, ogni 30 s, una riga di stato nel registro."""
+        now = time.time()
+        sec = int(now)
+        if self._sec is None:
+            self._sec = sec
+        if sec != self._sec and self._sec_snr:
+            snr_mean = float(np.mean(self._sec_snr))
+            snr_max = float(np.max(self._sec_snr))
+            look = self.tracker.look(now) if getattr(self.tracker, "ready", False) else None
+            afc = self.afc_hz if self.cfg.afc else 0.0
+            if self.csv:
+                src = self.src
+                with self.lock:
+                    dstate, dline = self.decoder.state, self.decoder.line
+                try:
+                    self.csv.row({
+                        "utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(self._sec)),
+                        "snr_db_mean": f"{snr_mean:.1f}", "snr_db_max": f"{snr_max:.1f}",
+                        "signal": int(self._sec_sig), "doppler_hz": f"{dop:.0f}", "afc_hz": f"{afc:.0f}",
+                        "manual_offset_hz": f"{self.cfg.manual_offset_hz:.0f}",
+                        "tuned_mhz": f"{(self.cfg.freq_hz + dop + afc + self.cfg.manual_offset_hz) / 1e6:.6f}",
+                        "gain": "auto" if self.cfg.gain_db < 0 else f"{self.cfg.gain_db:g}", "ppm": self.cfg.ppm,
+                        "iss_az_deg": f"{look[0]:.1f}" if look else "", "iss_el_deg": f"{look[1]:.1f}" if look else "",
+                        "iss_range_km": f"{look[2]:.0f}" if look else "",
+                        "decoder": dstate, "decoder_line": dline if dstate == "decoding" else "",
+                        "iq_overflows": src.overflows if src else "",
+                    })
+                except (OSError, ValueError):
+                    pass
+            if now - self._last_status >= STATUS_LOG_S:
+                self._last_status = now
+                el = tr(", ISS el {el:.1f}°", el=look[1]) if look else ""
+                self.events.put(("log", tr("Stato: SNR {m:.1f} dB (max {x:.1f}), Doppler {d:+.0f} Hz, AFC {a:+.0f} Hz{el}",
+                                           m=snr_mean, x=snr_max, d=dop, a=afc, el=el)))
+            self._sec_snr = []
+            self._sec_sig = False
+            self._sec = sec
+        self._sec_snr.append(self.snr_db)
+        self._sec_sig = self._sec_sig or self.squelch_open
 
     def _dec_event(self, kind, info):
         if kind == "image" and info.get("path"):
