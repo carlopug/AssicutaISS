@@ -1,0 +1,382 @@
+<title>Guida AssicutaISS</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Semi+Condensed:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: colonna di lettura stretta stile "manuale di stazione"; schema della finestra e curva Doppler a piena larghezza */
+:root {
+  --bg: #edf1f5;
+  --surface: #ffffff;
+  --ink: #142030;
+  --muted: #566577;
+  --line: #d3dbe4;
+  --accent: #c8640f;      /* arancio segnale: marcatori e trasmissioni */
+  --doppler: #1d68a8;     /* blu: curva Doppler, frequenze */
+  --ok: #2b7a3d;
+  --warn: #a8571a;
+  --mock-bg: #dfe6ee;
+  --mock-panel: #f8fafc;
+  --mock-dark: #1b2533;
+  --font-display: "Saira Semi Condensed", "Arial Narrow", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", Consolas, ui-monospace, monospace;
+  --step--1: 0.84rem;
+  --step-0: 1rem;
+  --step-1: 1.25rem;
+  --step-2: 1.6rem;
+  --step-3: 2.4rem;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0e1620; --surface: #15202d; --ink: #e2e9f1; --muted: #93a3b5; --line: #263445;
+    --accent: #ef9845; --doppler: #6fb3ec; --ok: #6cc282; --warn: #e9a061;
+    --mock-bg: #1a2635; --mock-panel: #111a25; --mock-dark: #0a1018;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0e1620; --surface: #15202d; --ink: #e2e9f1; --muted: #93a3b5; --line: #263445;
+  --accent: #ef9845; --doppler: #6fb3ec; --ok: #6cc282; --warn: #e9a061;
+  --mock-bg: #1a2635; --mock-panel: #111a25; --mock-dark: #0a1018;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: var(--step-0);
+  line-height: 1.6;
+  padding-block: 0 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 980px; margin: 0 auto; display: flex; flex-direction: column; gap: 56px; }
+.read { max-width: 68ch; }
+h1, h2, h3 { font-family: var(--font-display); line-height: 1.15; text-wrap: balance; margin: 0; }
+h2 { font-size: var(--step-2); font-weight: 700; }
+h3 { font-size: var(--step-1); font-weight: 500; }
+p { margin: 0; }
+.mono, code { font-family: var(--font-mono); font-size: 0.92em; }
+code { background: var(--surface); border: 1px solid var(--line); padding: 1px 5px; border-radius: 4px; }
+.label { font-family: var(--font-mono); font-size: var(--step--1); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+section { display: flex; flex-direction: column; gap: 18px; }
+a { color: var(--doppler); }
+a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ---------- testata ---------- */
+header.top { padding-top: 48px; display: flex; flex-direction: column; gap: 14px; }
+header.top h1 { font-size: var(--step-3); font-weight: 700; letter-spacing: 0.01em; }
+.freqline { display: flex; flex-wrap: wrap; gap: 10px 28px; font-family: var(--font-mono); color: var(--muted); font-size: var(--step--1); }
+.freqline b { color: var(--ink); font-weight: 500; }
+
+/* ---------- passi preliminari ---------- */
+.steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; counter-reset: s; }
+.steps li { counter-increment: s; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 6px; }
+.steps li::before { content: counter(s); font-family: var(--font-display); font-weight: 700; font-size: var(--step-2); color: var(--accent); line-height: 1; }
+.steps strong { font-weight: 600; }
+.steps p { color: var(--muted); font-size: 0.95rem; }
+
+/* ---------- schema finestra ---------- */
+.mock-scroll { overflow-x: auto; }
+.mock { min-width: 720px; background: var(--mock-bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px; display: grid; gap: 8px;
+  grid-template-columns: 1fr 1.9fr 1.35fr; grid-template-rows: auto auto 1fr auto;
+  grid-template-areas: "bar bar bar" "chk chk chk" "left wf right" "log log log"; font-size: 0.8rem; }
+.z { position: relative; background: var(--mock-panel); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; color: var(--muted); }
+.z .tag { position: absolute; top: -9px; left: -9px; width: 24px; height: 24px; border-radius: 50%; background: var(--accent); color: #fff;
+  font-family: var(--font-display); font-weight: 700; font-size: 0.85rem; display: grid; place-items: center; box-shadow: 0 0 0 3px var(--mock-bg); }
+.bar { grid-area: bar; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding-left: 22px; }
+.chk { grid-area: chk; display: flex; gap: 16px; flex-wrap: wrap; padding-left: 22px; }
+.btn { background: var(--accent); color: #fff; border-radius: 4px; padding: 3px 10px; font-weight: 600; }
+.fld { border: 1px solid var(--line); border-radius: 4px; padding: 2px 8px; background: var(--surface); color: var(--ink); font-family: var(--font-mono); }
+.left { grid-area: left; display: flex; flex-direction: column; gap: 8px; padding: 0; background: none; border: 0; }
+.left .z { flex: 1; }
+.wf { grid-area: wf; background: var(--mock-dark); border-color: var(--mock-dark); padding: 0; overflow: hidden; display: flex; flex-direction: column; min-height: 300px; }
+.wf canvas { width: 100%; flex: 1; display: block; }
+.right { grid-area: right; display: flex; flex-direction: column; gap: 8px; padding: 0; background: none; border: 0; }
+.right .z:first-child { flex: 1.3; }
+.right .z:last-child { flex: 1; }
+.log { grid-area: log; font-family: var(--font-mono); font-size: 0.72rem; }
+.mini { display: flex; justify-content: space-between; gap: 8px; font-family: var(--font-mono); font-size: 0.72rem; }
+.mini b { color: var(--ink); font-weight: 500; }
+.sstv { margin-top: 6px; aspect-ratio: 4/3; border-radius: 4px; background:
+  linear-gradient(to bottom, transparent 58%, var(--mock-dark) 58%),
+  linear-gradient(to right, #e9e9e9 0 12.5%, #e6d84a 0 25%, #4fc6d2 0 37.5%, #4cb05a 0 50%, #b45bb4 0 62.5%, #cf4b3c 0 75%, #3d55c4 0 87.5%, #222 0); }
+.thumbs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-top: 6px; }
+.thumbs span { aspect-ratio: 4/3; border-radius: 3px; background: linear-gradient(135deg, #2c4a6e, #8aa6c4); }
+.thumbs span:nth-child(2) { background: linear-gradient(135deg, #5a3a2a, #d9a46a); }
+.thumbs span:nth-child(3) { background: linear-gradient(135deg, #1f3b2e, #7fb08e); }
+
+.legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px 28px; margin: 0; }
+.legend div { display: grid; grid-template-columns: 28px 1fr; gap: 10px; align-items: start; }
+.legend dt { width: 24px; height: 24px; border-radius: 50%; background: var(--accent); color: #fff; font-family: var(--font-display); font-weight: 700; font-size: 0.85rem; display: grid; place-items: center; margin-top: 2px; }
+.legend dd { margin: 0; }
+.legend dd b { font-weight: 600; }
+
+/* ---------- passaggio ---------- */
+.chart { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
+.chart svg { width: 100%; height: auto; display: block; }
+.chart text { fill: var(--muted); font-family: var(--font-mono); font-size: 11px; }
+.chart .grid { stroke: var(--line); stroke-width: 1; }
+.chart .zero { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 4; }
+.chart .curve { fill: none; stroke: var(--doppler); stroke-width: 2.5; }
+.chart .tx { fill: var(--accent); fill-opacity: 0.16; }
+.chart .txl { fill: var(--accent); }
+.chart .note { fill: var(--ink); font-family: var(--font-body); font-size: 12px; }
+.caption { color: var(--muted); font-size: 0.92rem; }
+
+/* ---------- tabelle ---------- */
+.tbl-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; font-size: 0.95rem; }
+th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-family: var(--font-mono); font-weight: 500; font-size: var(--step--1); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+tr:last-child td { border-bottom: 0; }
+td.num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pill { display: inline-block; font-family: var(--font-mono); font-size: 0.78rem; padding: 1px 8px; border-radius: 99px; border: 1px solid currentColor; white-space: nowrap; }
+.pill.ok { color: var(--ok); }
+.pill.warn { color: var(--warn); }
+.pill.off { color: var(--muted); }
+.best td { font-weight: 600; }
+
+.files { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+.file { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; }
+.file .mono { color: var(--doppler); }
+.file p { color: var(--muted); font-size: 0.93rem; }
+
+footer { color: var(--muted); font-size: var(--step--1); border-top: 1px solid var(--line); padding-top: 18px; }
+@media (max-width: 520px) { header.top h1 { font-size: 1.9rem; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <span class="label">Guida rapida · RTL-SDR → Robot36</span>
+    <h1>AssicutaISS</h1>
+    <p class="label">an ISS SSTV Receiver for Robot36 · v. 1.0</p>
+    <p class="read">Come ricevere le immagini SSTV della Stazione Spaziale con il dongle RTL-SDR, dall'avvio del programma all'immagine salvata. Il programma segue da solo il Doppler: tu devi solo farlo partire prima del passaggio.</p>
+    <div class="freqline">
+      <span>Frequenza <b>437,550 MHz FM</b></span>
+      <span>Modo <b>Robot 36</b></span>
+      <span>Ciclo <b>36 s on / 2 min off</b></span>
+      <span>Stazione <b>Catania · locator JM77</b></span>
+    </div>
+  </header>
+
+  <section>
+    <h2>Prima di iniziare</h2>
+    <ol class="steps">
+      <li><strong>Chiudi SDR# e SDR++</strong><p>Il dongle può essere usato da un solo programma alla volta. Se resta occupato, il ricevitore aspetta che si liberi.</p></li>
+      <li><strong>Collega dongle e antenna 70 cm</strong><p>Verticale o ground-plane va bene per i passaggi alti; una Yagi puntata a mano va meglio. Puoi collegare il dongle anche dopo aver premuto «Avvia».</p></li>
+      <li><strong>Avvia <code>avvia.bat</code></strong><p>La prima volta compila «Stazione e nominativo…»: nominativo, nome, email, antenna e cavo finiscono nella scheda di ogni immagine.</p></li>
+      <li><strong>Guarda il prossimo passaggio</strong><p>Nella tabella a sinistra. Premi «Avvia ricezione» 2-3 minuti prima dell'inizio.</p></li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>La finestra</h2>
+    <div class="mock-scroll" role="img" aria-label="Schema della finestra del programma con le zone indicate da lettere">
+      <div class="mock">
+        <div class="z bar"><span class="tag">A</span>
+          <span class="btn">▶ Avvia ricezione</span><span>Frequenza</span><span class="fld">437,5500 MHz</span>
+          <span>Guadagno</span><span class="fld">Auto</span><span>PPM</span><span class="fld">0</span>
+          <span>Offset</span><span class="fld">0 Hz</span><span>Squelch AFC</span><span class="fld">4,0 dB</span>
+        </div>
+        <div class="z chk"><span class="tag">B</span>
+          <span>☑ Doppler</span><span>☑ AFC</span><span>☐ Bias-T</span><span>☑ Registra WAV</span><span>☑ Avvio automatico ai passaggi</span>
+          <span>☑ Ascolto</span><span class="fld">Speakers (Realtek…) ▾</span><span>Volume ▬▬▭▭</span><span>☐ Silenzia senza segnale</span>
+        </div>
+        <div class="left">
+          <div class="z"><span class="tag">C</span>
+            <div class="label">Frequenze</div>
+            <div class="mini"><span>Doppler</span><b>+8.412 Hz</b></div>
+            <div class="mini"><span>AFC</span><b>+260 Hz</b></div>
+            <div class="mini"><span>Effettiva</span><b>437,55867</b></div>
+          </div>
+          <div class="z"><span class="tag">D</span>
+            <div class="label">Segnale</div>
+            <div class="mini"><span>SNR</span><b>14 dB</b></div>
+            <div class="mini"><span>Stato</span><b>riga 132/240</b></div>
+          </div>
+          <div class="z"><span class="tag">E</span>
+            <div class="label">ISS e passaggi</div>
+            <div class="mini"><span>Az 212° El +41°</span></div>
+            <div class="mini"><span>01:02</span><b>63°</b></div>
+            <div class="mini"><span>17:43</span><b>61°</b></div>
+          </div>
+        </div>
+        <div class="z wf"><span class="tag">F</span><canvas id="wf" width="520" height="320" aria-hidden="true"></canvas></div>
+        <div class="right">
+          <div class="z"><span class="tag">G</span><div class="label">Immagine in ricezione</div><div class="sstv"></div></div>
+          <div class="z"><span class="tag">H</span><div class="label">Immagini ricevute</div><div class="thumbs"><span></span><span></span><span></span></div></div>
+        </div>
+        <div class="z log"><span class="tag">I</span>01:03:12  VIS Robot36 rilevato: inizio immagine · 01:03:48  Immagine salvata: 20261112_000312Z.png [240 righe, slant +38 ppm] · Scheda ARISS: 20261112_000312Z.txt</div>
+      </div>
+    </div>
+    <dl class="legend">
+      <div><dt>A</dt><dd><b>Comandi.</b> Avvio/arresto, frequenza (lascia 437,550), guadagno, correzione PPM del dongle, offset manuale, soglia che attiva l'AFC.</dd></div>
+      <div><dt>B</dt><dd><b>Opzioni e ascolto.</b> Lascia sempre attivi Doppler e AFC. «Avvio automatico» accende e spegne il ricevitore a ogni passaggio. «Ascolto» fa sentire il segnale sull'uscita scelta, comprese cuffie o cavo virtuale verso MMSSTV. Parti con il volume basso: senza segnale il fruscio è forte.</dd></div>
+      <div><dt>C</dt><dd><b>Frequenze.</b> Correzione Doppler calcolata dall'orbita, correzione AFC misurata sul segnale e frequenza su cui si sta ascoltando.</dd></div>
+      <div><dt>D</dt><dd><b>Segnale.</b> Barra SNR e stato del decoder: «In attesa» oppure la riga in decodifica su 240. In arancione compare «In attesa del dongle…» se il dongle manca o è occupato.</dd></div>
+      <div><dt>E</dt><dd><b>ISS.</b> Posizione attuale, conto alla rovescia e passaggi delle prossime 48 ore. In verde quelli oltre 40°.</dd></div>
+      <div><dt>F</dt><dd><b>Waterfall.</b> ±25 kHz attorno alla frequenza corretta. Il segnale dell'ISS deve stare nella banda gialla, sulla linea tratteggiata.</dd></div>
+      <div><dt>G</dt><dd><b>Immagine live.</b> Si compone riga per riga mentre arriva (circa 36 secondi).</dd></div>
+      <div><dt>H</dt><dd><b>Galleria.</b> Le immagini salvate; doppio clic per aprirle. Sotto c'è anche «Decodifica file WAV…».</dd></div>
+      <div><dt>I</dt><dd><b>Registro.</b> Inizio immagine, salvataggi, errori del dongle.</dd></div>
+    </dl>
+  </section>
+
+  <section>
+    <h2>Cosa succede durante un passaggio</h2>
+    <p class="read">Mentre l'ISS si avvicina il segnale arriva più alto di circa 10 kHz, al punto più vicino passa per la frequenza nominale, poi scende di altri 10 kHz. Il programma applica questa curva in continuo e l'AFC corregge il piccolo errore che resta. Le fasce arancioni sono le trasmissioni: in un passaggio di 6-7 minuti ne capitano 2 o 3.</p>
+    <div class="chart">
+      <svg id="dop" viewBox="0 0 860 300" role="img" aria-label="Curva Doppler a 437,55 MHz durante un passaggio alto: da circa +9,5 kHz all'inizio a circa −9,5 kHz alla fine, con tre finestre di trasmissione da 36 secondi"></svg>
+    </div>
+    <p class="caption">Esempio schematico per un passaggio a 63° di elevazione massima. Gli orari reali delle trasmissioni non sono sincronizzati con il passaggio.</p>
+  </section>
+
+  <section>
+    <h2>Come capire se va tutto bene</h2>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Indicatore</th><th>Cosa vedi</th><th>Significato</th></tr></thead>
+        <tbody>
+          <tr><td>Segnale</td><td><span class="pill ok">Segnale presente (AFC attivo)</span></td><td>SNR sopra la soglia: l'AFC sta inseguendo la portante.</td></tr>
+          <tr><td>Segnale</td><td><span class="pill off">Nessun segnale</span></td><td>Normale fra una trasmissione e l'altra. Senza segnale l'SNR sta fra −8 e −3 dB.</td></tr>
+          <tr><td>Segnale</td><td><span class="pill warn">In attesa del dongle…</span></td><td>Dongle scollegato o usato da SDR#/SDR++. Il programma riprova ogni 3 s e riparte da solo, anche durante l'avvio automatico.</td></tr>
+          <tr><td>Registro</td><td>«Dongle scollegato…» poi «Dongle collegato»</td><td>Il dongle si è staccato: l'immagine in corso è stata salvata come parziale e la ricezione è ripresa al ricollegamento.</td></tr>
+          <tr><td>Registro</td><td><span class="pill off">Falso avvio scartato</span></td><td>Il decoder ha visto qualcosa di simile a un'immagine, ma non aveva sync validi: era rumore e non viene salvato.</td></tr>
+          <tr><td>Waterfall</td><td>Traccia centrata sulla linea tratteggiata</td><td>Doppler e AFC lavorano. Se la traccia scivola di lato, controlla che «Doppler» sia attivo.</td></tr>
+          <tr><td>Decoder</td><td class="num">riga 132/240</td><td>Immagine in corso. Una riga ogni 150 ms.</td></tr>
+          <tr><td>Registro</td><td><span class="pill warn">Treno di sync rilevato (VIS perso)</span></td><td>L'inizio della trasmissione era coperto da un fading: l'immagine parte lo stesso, magari spostata di qualche riga.</td></tr>
+          <tr><td>AFC</td><td>Fermo vicino a ±5.000 Hz</td><td>Il dongle è molto starato: imposta PPM ≈ valore AFC ÷ 437,55 e premi «Azzera AFC».</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>Passaggi migliori dei prossimi giorni</h2>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Giorno</th><th>Inizio</th><th>Fine</th><th>El. max</th></tr></thead>
+        <tbody>
+          <tr class="best"><td>gio 12/11</td><td class="num">17:43</td><td class="num">17:50</td><td class="num">61°</td></tr>
+          <tr><td>ven 13/11</td><td class="num">00:14</td><td class="num">00:20</td><td class="num">37°</td></tr>
+          <tr><td>ven 13/11</td><td class="num">16:56</td><td class="num">17:02</td><td class="num">32°</td></tr>
+          <tr><td>sab 14/11</td><td class="num">01:03</td><td class="num">01:09</td><td class="num">37°</td></tr>
+          <tr><td>sab 14/11</td><td class="num">17:45</td><td class="num">17:51</td><td class="num">41°</td></tr>
+          <tr class="best"><td>dom 15/11</td><td class="num">00:15</td><td class="num">00:22</td><td class="num">72°</td></tr>
+          <tr class="best"><td>dom 15/11</td><td class="num">16:57</td><td class="num">17:03</td><td class="num">74°</td></tr>
+          <tr class="best"><td>dom 15/11</td><td class="num">23:27</td><td class="num">23:34</td><td class="num">62°</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="caption">Passaggi oltre 30° fino alla fine dell'evento, calcolati il 12/11 per la tua stazione. In grassetto quelli oltre 60°. Il programma li aggiorna da solo: fa fede la tabella nella finestra.</p>
+  </section>
+
+  <section>
+    <h2>Dove finiscono i file</h2>
+    <div class="files">
+      <div class="file"><span class="mono">images/20261112_000312Z.png</span><p>L'immagine, 320 × 240. Il nome è solo data e ora UTC di inizio ricezione (la Z indica UTC), come chiede il modulo ARISS.</p></div>
+      <div class="file"><span class="mono">images/20261112_000312Z.txt</span><p>La scheda: tutti i campi del modulo ARISS già compilati, i commenti da incollare (S-meter stimato, AOS/LOS, antenna, cavo), lo stato dell'immagine (completa o parziale) e i dettagli della ricezione.</p></div>
+      <div class="file"><span class="mono">images/rec_….wav</span><p>Audio demodulato, solo con «Registra WAV». Si può ridecodificare con «Decodifica file WAV…». Tienilo attivo: una registrazione reale serve a ritoccare le soglie del decoder.</p></div>
+      <div class="file"><span class="mono">stazione.json · config.json</span><p>Dati fissi della stazione (nominativo, posizione, attrezzatura, campagna ARISS), modificabili da «Stazione e nominativo…», e impostazioni del ricevitore.</p></div>
+    </div>
+    <p class="read">Per inviare un'immagine alla galleria ARISS apri il suo <code>.txt</code> e copia i campi nel modulo su <a href="https://ariss-usa.org/ARISS_SSTV/submit.php">ariss-usa.org/ARISS_SSTV/submit.php</a>. Le richieste di certificato si accettano solo per circa 72 ore dopo la fine dell'evento.</p>
+  </section>
+
+  <section>
+    <h2>Problemi comuni</h2>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Problema</th><th>Soluzione</th></tr></thead>
+        <tbody>
+          <tr><td>Resta su «In attesa del dongle…»</td><td>Chiudi SDR#/SDR++ e ricollega il dongle. Se non basta, prova un'altra porta USB. Non serve premere di nuovo «Avvia».</td></tr>
+          <tr><td>Non sento niente con «Ascolto» attivo</td><td>Controlla l'uscita scelta e il volume. Con «Silenzia senza segnale» il programma tace finché l'SNR non supera la soglia «Squelch AFC».</td></tr>
+          <tr><td>Waterfall tutto acceso, righe orizzontali</td><td>Guadagno troppo alto: passa da Auto a 30-40 dB.</td></tr>
+          <tr><td>Nessuna traccia anche a passaggio in corso</td><td>Controlla antenna e cavo; i passaggi sotto 20° sono spesso troppo deboli.</td></tr>
+          <tr><td>Immagine rumorosa o a strisce</td><td>Segnale debole: punta meglio l'antenna o aspetta un passaggio più alto.</td></tr>
+          <tr><td>Passaggi mancanti o sbagliati</td><td>Premi «Aggiorna TLE» (serve Internet).</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>AssicutaISS v. 1.0 · ARISS SSTV Series 35, 9-16 novembre · RTL2832U + R820T2</footer>
+</div>
+
+<script>
+(function () {
+  const css = getComputedStyle(document.documentElement);
+  const col = (n) => css.getPropertyValue(n).trim();
+
+  /* --- curva Doppler, modello a terra piatta scalato a ±9,5 kHz --- */
+  const svg = document.getElementById("dop");
+  const NS = "http://www.w3.org/2000/svg";
+  const W = 860, H = 300, L = 64, R = 20, T = 20, B = 44;
+  const t0 = -200, t1 = 200, fmax = 12000;
+  const x = (t) => L + (t - t0) / (t1 - t0) * (W - L - R);
+  const y = (f) => T + (fmax - f) / (2 * fmax) * (H - T - B);
+  const el = (tag, attrs, text) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (text) e.textContent = text; svg.appendChild(e); return e; };
+  const dop = (t) => -9500 * t / Math.sqrt(t * t + 55 * 55);
+
+  [[-130, 36], [26, 36], [182, 18]].forEach(([s, d], i) => {
+    el("rect", { class: "tx", x: x(s), y: T, width: x(s + d) - x(s), height: H - T - B });
+    if (i < 2) el("text", { class: "txl", x: x(s) + 4, y: T + 14 }, "SSTV 36 s");
+  });
+  for (let f = -10000; f <= 10000; f += 5000) {
+    el("line", { class: f === 0 ? "zero" : "grid", x1: L, x2: W - R, y1: y(f), y2: y(f) });
+    el("text", { x: L - 8, y: y(f) + 4, "text-anchor": "end" }, (f > 0 ? "+" : f < 0 ? "−" : "") + Math.abs(f / 1000) + " kHz");
+  }
+  for (let t = -180; t <= 180; t += 60) {
+    el("text", { x: x(t), y: H - B + 18, "text-anchor": "middle" }, (t > 0 ? "+" : t < 0 ? "−" : "") + Math.abs(t / 60) + " min");
+  }
+  el("text", { x: x(0), y: H - 6, "text-anchor": "middle" }, "tempo dal punto più vicino");
+  let d = "";
+  for (let t = -190; t <= 190; t += 2) d += (d ? "L" : "M") + x(t).toFixed(1) + "," + y(dop(t)).toFixed(1);
+  el("path", { class: "curve", d });
+  el("text", { class: "note", x: x(-185), y: y(9500) - 10 }, "AOS: segnale +9,5 kHz");
+  el("text", { class: "note", x: x(4), y: y(0) - 8 }, "massima elevazione");
+  el("text", { class: "note", x: x(185), y: y(-9500) + 20, "text-anchor": "end" }, "LOS: −9,5 kHz");
+
+  /* --- waterfall finto per lo schema della finestra --- */
+  const cv = document.getElementById("wf");
+  const g = cv.getContext("2d");
+  const w = cv.width, h = cv.height;
+  g.fillStyle = col("--mock-dark") || "#1b2533";
+  g.fillRect(0, 0, w, h);
+  let seed = 7;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const top = 70;
+  for (let r = top; r < h; r += 2) {
+    for (let c = 0; c < w; c += 2) {
+      const v = rnd() * 40;
+      g.fillStyle = `rgb(${20 + v * 0.6},${12 + v * 0.3},${40 + v})`;
+      g.fillRect(c, r, 2, 2);
+    }
+  }
+  const cx = w / 2;
+  for (let r = top; r < top + 150; r++) {
+    for (let k = -1; k <= 1; k++) {
+      const off = Math.sin(r * 0.21 + k) * 60 * (k === 0 ? 1 : 0.35) + k * 22;
+      g.fillStyle = k === 0 ? "rgba(255,190,80,0.95)" : "rgba(255,120,60,0.55)";
+      g.fillRect(cx + off, r, 3, 1);
+    }
+  }
+  g.fillStyle = "rgba(255,200,0,0.10)";
+  g.fillRect(cx - 78, 0, 156, h);
+  g.strokeStyle = "rgba(255,204,0,0.8)";
+  g.setLineDash([4, 4]);
+  g.beginPath(); g.moveTo(cx, 0); g.lineTo(cx, h); g.stroke();
+  g.setLineDash([]);
+  g.strokeStyle = "#4fc3f7";
+  g.beginPath();
+  for (let c = 0; c < w; c += 3) {
+    const sig = Math.exp(-((c - cx) ** 2) / (2 * 40 * 40)) * 32;
+    const yy = 55 - sig - rnd() * 6;
+    c ? g.lineTo(c, yy) : g.moveTo(c, yy);
+  }
+  g.stroke();
+})();
+</script>

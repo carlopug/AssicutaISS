@@ -1,0 +1,551 @@
+"""Finestra principale di AssicutaISS."""
+import os
+import queue
+import re
+import threading
+from datetime import datetime
+
+from PySide6.QtCore import Qt, QTimer
+from PySide6.QtGui import QFont
+from PySide6.QtWidgets import (QCheckBox, QComboBox, QDoubleSpinBox, QFileDialog, QGridLayout, QGroupBox,
+                               QHBoxLayout, QHeaderView, QLabel, QMainWindow, QMessageBox, QPlainTextEdit,
+                               QProgressBar, QPushButton, QSlider, QSpinBox, QSplitter, QTableWidget,
+                               QTableWidgetItem, QVBoxLayout, QWidget)
+
+from .. import WINDOW_TITLE, audio_out
+from ..config import APP_DIR
+from ..doppler import IssTracker
+from ..engine import Engine
+from ..sdr_source import R820T_GAINS
+from ..report import maidenhead, write_report
+from ..sstv.robot36 import decode_audio_file
+from .widgets import Gallery, LiveImage, StationDialog, WaterfallWidget
+
+
+def fmt_hz(v):
+    return f"{v:+,.0f} Hz".replace(",", ".")
+
+
+class MainWindow(QMainWindow):
+    def __init__(self, cfg):
+        super().__init__()
+        self.cfg = cfg
+        os.makedirs(cfg.images_dir, exist_ok=True)
+        self.tracker = IssTracker(os.path.join(APP_DIR, "data"))
+        self.engine = Engine(cfg, self.tracker)
+        self.ui_q = queue.Queue()             # funzioni da eseguire nel thread GUI
+        self.passes = []
+        self.last_img_ver = -1
+        self.auto_started = False
+        self.setWindowTitle(WINDOW_TITLE)
+        self.resize(1400, 820)
+        self._build()
+        self._load_settings_into_ui()
+
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self._tick)
+        self.timer.start(50)
+        self.slow = QTimer(self)
+        self.slow.timeout.connect(self._slow_tick)
+        self.slow.start(1000)
+
+        if cfg.station_set:
+            self.tracker.set_station(cfg.lat, cfg.lon, cfg.alt_m)
+        self._bg(self._load_tle_and_passes)
+        if not cfg.station_set:
+            QTimer.singleShot(300, self._edit_station)
+
+    # ================================================================ UI
+    def _build(self):
+        central = QWidget()
+        root = QVBoxLayout(central)
+
+        # ---- barra controlli
+        bar = QHBoxLayout()
+        self.btn_start = QPushButton("▶  Avvia ricezione")
+        self.btn_start.setMinimumWidth(170)
+        self.btn_start.setStyleSheet("font-weight:bold; padding:6px;")
+        self.btn_start.clicked.connect(self._toggle)
+        bar.addWidget(self.btn_start)
+
+        bar.addWidget(QLabel("Frequenza"))
+        self.freq = QDoubleSpinBox()
+        self.freq.setRange(24.0, 1766.0)
+        self.freq.setDecimals(4)
+        self.freq.setSuffix(" MHz")
+        self.freq.setSingleStep(0.005)
+        self.freq.editingFinished.connect(self._freq_changed)
+        bar.addWidget(self.freq)
+
+        bar.addWidget(QLabel("Guadagno"))
+        self.gain = QComboBox()
+        self.gain.addItem("Auto", -1.0)
+        for g in R820T_GAINS:
+            self.gain.addItem(f"{g:.1f} dB", g)
+        self.gain.currentIndexChanged.connect(self._gain_changed)
+        bar.addWidget(self.gain)
+
+        bar.addWidget(QLabel("PPM"))
+        self.ppm = QSpinBox()
+        self.ppm.setRange(-200, 200)
+        self.ppm.editingFinished.connect(self._ppm_changed)
+        bar.addWidget(self.ppm)
+
+        self.chk_doppler = QCheckBox("Doppler")
+        self.chk_afc = QCheckBox("AFC")
+        self.chk_bias = QCheckBox("Bias-T")
+        self.chk_wav = QCheckBox("Registra WAV")
+        self.chk_auto = QCheckBox("Avvio automatico ai passaggi")
+        bar2 = QHBoxLayout()
+        for c in (self.chk_doppler, self.chk_afc, self.chk_bias, self.chk_wav, self.chk_auto):
+            c.toggled.connect(self._checks_changed)
+            bar2.addWidget(c)
+        bar2.addSpacing(24)
+        self.chk_mon = QCheckBox("Ascolto")
+        self.chk_mon.setToolTip("Riproduce l'audio demodulato per sentire il segnale")
+        self.cmb_out = QComboBox()
+        self.cmb_out.setMinimumWidth(260)
+        self.cmb_out.addItem("Uscita predefinita di Windows", "")
+        for name in audio_out.list_outputs():
+            self.cmb_out.addItem(name, name)
+        self.sld_vol = QSlider(Qt.Horizontal)
+        self.sld_vol.setRange(0, 100)
+        self.sld_vol.setFixedWidth(120)
+        self.chk_mute = QCheckBox("Silenzia senza segnale")
+        bar2.addWidget(self.chk_mon)
+        bar2.addWidget(self.cmb_out)
+        bar2.addWidget(QLabel("Volume"))
+        bar2.addWidget(self.sld_vol)
+        bar2.addWidget(self.chk_mute)
+        if not audio_out.available():
+            for w in (self.chk_mon, self.cmb_out, self.sld_vol, self.chk_mute):
+                w.setEnabled(False)
+            self.chk_mon.setToolTip(f"Ascolto non disponibile: {audio_out.IMPORT_ERROR}")
+        self.chk_mon.toggled.connect(self._monitor_changed)
+        self.cmb_out.currentIndexChanged.connect(self._monitor_changed)
+        self.sld_vol.valueChanged.connect(self._monitor_volume)
+        self.chk_mute.toggled.connect(self._monitor_volume)
+        bar2.addStretch(1)
+
+        bar.addWidget(QLabel("Offset"))
+        self.offset = QSpinBox()
+        self.offset.setRange(-20000, 20000)
+        self.offset.setSingleStep(100)
+        self.offset.setSuffix(" Hz")
+        self.offset.valueChanged.connect(self._offset_changed)
+        bar.addWidget(self.offset)
+
+        bar.addWidget(QLabel("Squelch AFC"))
+        self.squelch = QDoubleSpinBox()
+        self.squelch.setRange(-10, 40)
+        self.squelch.setDecimals(1)
+        self.squelch.setSuffix(" dB")
+        self.squelch.valueChanged.connect(
+            lambda v: None if getattr(self, "_loading", False) else setattr(self.cfg, "squelch_db", v))
+        bar.addWidget(self.squelch)
+        bar.addStretch(1)
+        root.addLayout(bar)
+        root.addLayout(bar2)
+
+        # ---- corpo
+        split = QSplitter(Qt.Horizontal)
+
+        # pannello sinistro
+        left = QWidget()
+        ll = QVBoxLayout(left)
+        g_freq = QGroupBox("Frequenze")
+        gf = QGridLayout(g_freq)
+        big = QFont()
+        big.setPointSize(13)
+        big.setBold(True)
+        self.lbl_nom = QLabel()
+        self.lbl_dop = QLabel()
+        self.lbl_afc = QLabel()
+        self.lbl_eff = QLabel()
+        self.lbl_eff.setFont(big)
+        for i, (t, w) in enumerate((("Nominale", self.lbl_nom), ("Doppler (TLE)", self.lbl_dop),
+                                    ("AFC", self.lbl_afc), ("Sintonia effettiva", self.lbl_eff))):
+            gf.addWidget(QLabel(t), i, 0)
+            gf.addWidget(w, i, 1)
+        btn_afc = QPushButton("Azzera AFC")
+        btn_afc.clicked.connect(self.engine.reset_afc)
+        gf.addWidget(btn_afc, 4, 0, 1, 2)
+        ll.addWidget(g_freq)
+
+        g_sig = QGroupBox("Segnale")
+        gs = QVBoxLayout(g_sig)
+        self.snr_bar = QProgressBar()
+        self.snr_bar.setRange(-5, 40)
+        self.snr_bar.setFormat("SNR %v dB")
+        gs.addWidget(self.snr_bar)
+        self.lbl_sq = QLabel()
+        self.lbl_dec = QLabel()
+        self.lbl_dec.setWordWrap(True)
+        gs.addWidget(self.lbl_sq)
+        gs.addWidget(self.lbl_dec)
+        ll.addWidget(g_sig)
+
+        g_iss = QGroupBox("ISS")
+        gi = QVBoxLayout(g_iss)
+        self.lbl_iss = QLabel("-")
+        self.lbl_iss.setFont(big)
+        self.lbl_next = QLabel("-")
+        self.lbl_next.setWordWrap(True)
+        self.lbl_tle = QLabel("TLE: caricamento...")
+        self.lbl_tle.setWordWrap(True)
+        self.lbl_tle.setStyleSheet("color:#888;")
+        gi.addWidget(self.lbl_iss)
+        gi.addWidget(self.lbl_next)
+        hb = QHBoxLayout()
+        b1 = QPushButton("Stazione e nominativo...")
+        b1.clicked.connect(self._edit_station)
+        b2 = QPushButton("Aggiorna TLE")
+        b2.clicked.connect(lambda: self._bg(lambda: self._load_tle_and_passes(force=True)))
+        hb.addWidget(b1)
+        hb.addWidget(b2)
+        gi.addLayout(hb)
+        gi.addWidget(self.lbl_tle)
+        ll.addWidget(g_iss)
+
+        g_pass = QGroupBox("Prossimi passaggi (48 h)")
+        gp = QVBoxLayout(g_pass)
+        self.tbl = QTableWidget(0, 4)
+        self.tbl.setHorizontalHeaderLabels(["Giorno", "Inizio", "Fine", "El. max"])
+        self.tbl.verticalHeader().setVisible(False)
+        self.tbl.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.tbl.setEditTriggers(QTableWidget.NoEditTriggers)
+        gp.addWidget(self.tbl)
+        ll.addWidget(g_pass, 1)
+        left.setMinimumWidth(300)
+        split.addWidget(left)
+
+        # centro: waterfall
+        self.wf = WaterfallWidget()
+        split.addWidget(self.wf)
+
+        # destra: immagine + galleria
+        right = QWidget()
+        rl = QVBoxLayout(right)
+        rl.addWidget(QLabel("Immagine in ricezione"))
+        self.live = LiveImage()
+        rl.addWidget(self.live, 3)
+        hb2 = QHBoxLayout()
+        b_dec = QPushButton("Decodifica file WAV...")
+        b_dec.clicked.connect(self._decode_file)
+        b_open = QPushButton("Apri cartella immagini")
+        b_open.clicked.connect(lambda: os.startfile(self.cfg.images_dir))
+        hb2.addWidget(b_dec)
+        hb2.addWidget(b_open)
+        rl.addLayout(hb2)
+        rl.addWidget(QLabel("Immagini ricevute (doppio clic per aprire)"))
+        self.gallery = Gallery(self.cfg.images_dir)
+        rl.addWidget(self.gallery, 2)
+        right.setMinimumWidth(360)
+        split.addWidget(right)
+        split.setSizes([320, 640, 440])
+        root.addWidget(split, 1)
+
+        self.log = QPlainTextEdit()
+        self.log.setReadOnly(True)
+        self.log.setMaximumHeight(110)
+        root.addWidget(self.log)
+        self.setCentralWidget(central)
+
+    def _load_settings_into_ui(self):
+        self._loading = True
+        try:
+            self._fill_ui()
+        finally:
+            self._loading = False
+        self._monitor_volume()
+        if self.cfg.monitor:
+            self._monitor_changed()
+
+    def _monitor_volume(self):
+        if getattr(self, "_loading", False):
+            return
+        self.cfg.monitor_volume = self.sld_vol.value()
+        self.cfg.monitor_mute = self.chk_mute.isChecked()
+        # curva quadratica: il fruscio FM è quasi a fondo scala, serve finezza sui valori bassi
+        self.engine.monitor.volume = (self.cfg.monitor_volume / 100.0) ** 2
+        self.engine.monitor.mute_without_signal = self.cfg.monitor_mute
+
+    def _monitor_changed(self):
+        if getattr(self, "_loading", False):
+            return
+        c = self.cfg
+        c.monitor = self.chk_mon.isChecked()
+        c.monitor_device = self.cmb_out.currentData() or ""
+        mon = self.engine.monitor
+        if not c.monitor:
+            if mon.active:
+                mon.stop()
+                self.log_msg("Ascolto disattivato")
+            return
+        try:
+            mon.start(c.monitor_device or None)
+            self.log_msg(f"Ascolto su: {self.cmb_out.currentText()}")
+        except Exception as e:
+            self.log_msg(f"Impossibile aprire l'uscita audio: {e}")
+            self._loading = True
+            self.chk_mon.setChecked(False)
+            self._loading = False
+            c.monitor = False
+
+    def _fill_ui(self):
+        c = self.cfg
+        self.freq.setValue(c.freq_hz / 1e6)
+        idx = self.gain.findData(c.gain_db)
+        self.gain.setCurrentIndex(idx if idx >= 0 else 0)
+        self.ppm.setValue(c.ppm)
+        self.chk_doppler.setChecked(c.doppler)
+        self.chk_afc.setChecked(c.afc)
+        self.chk_bias.setChecked(c.bias_tee)
+        self.chk_wav.setChecked(c.record_wav)
+        self.chk_auto.setChecked(c.auto_pass)
+        self.offset.setValue(int(c.manual_offset_hz))
+        self.squelch.setValue(c.squelch_db)
+        idx = self.cmb_out.findData(c.monitor_device)
+        self.cmb_out.setCurrentIndex(idx if idx >= 0 else 0)
+        self.sld_vol.setValue(int(c.monitor_volume))
+        self.chk_mute.setChecked(c.monitor_mute)
+        self.chk_mon.setChecked(c.monitor and audio_out.available())
+
+    # =========================================================== azioni
+    def log_msg(self, text):
+        self.log.appendPlainText(f"{datetime.now():%H:%M:%S}  {text}")
+
+    def _bg(self, fn):
+        def run():
+            try:
+                fn()
+            except Exception as e:
+                self.ui_q.put(lambda: self.log_msg(f"Errore: {e}"))
+        threading.Thread(target=run, daemon=True).start()
+
+    def _load_tle_and_passes(self, force=False):
+        msg = self.tracker.load_tle(force)
+        self.ui_q.put(lambda: (self.lbl_tle.setText(msg), self.log_msg(msg)))
+        self._compute_passes()
+
+    def _compute_passes(self):
+        p = self.tracker.passes(48, self.cfg.min_el)
+        self.ui_q.put(lambda: self._show_passes(p))
+
+    def _show_passes(self, passes):
+        self.passes = passes
+        self.tbl.setRowCount(len(passes))
+        for r, p in enumerate(passes):
+            vals = [f"{p['aos']:%a %d/%m}", f"{p['aos']:%H:%M:%S}", f"{p['los']:%H:%M:%S}", f"{p['max_el']:.0f}°"]
+            for c, v in enumerate(vals):
+                it = QTableWidgetItem(v)
+                it.setTextAlignment(Qt.AlignCenter)
+                if p["max_el"] >= 40:
+                    it.setForeground(Qt.darkGreen)
+                self.tbl.setItem(r, c, it)
+
+    def _edit_station(self):
+        d = StationDialog(self.cfg, self)
+        if d.exec():
+            d.apply(self.cfg)
+            self.cfg.save_station()
+            self.tracker.set_station(self.cfg.lat, self.cfg.lon, self.cfg.alt_m)
+            c = self.cfg
+            self.log_msg(f"Stazione {c.callsign or 'SWL'}: {c.lat:.4f}, {c.lon:.4f}, {c.alt_m:.0f} m, "
+                         f"locator {maidenhead(c.lat, c.lon)} - salvata in stazione.json")
+            self._bg(self._compute_passes)
+
+    def _toggle(self):
+        if self.engine.running:
+            self._stop()
+        else:
+            self._start()
+
+    def _start(self):
+        try:
+            self.engine.reset_afc()
+            self.engine.start()
+        except Exception as e:  # solo errori definitivi: se il dongle manca, l'engine resta in attesa
+            QMessageBox.critical(self, "Errore ricevitore", str(e))
+            self.log_msg(str(e))
+            return False
+        self.btn_start.setText("■  Ferma ricezione")
+        self.btn_start.setStyleSheet("font-weight:bold; padding:6px; background:#c62828; color:white;")
+        return True
+
+    def _stop(self):
+        self.engine.stop()
+        self.btn_start.setText("▶  Avvia ricezione")
+        self.btn_start.setStyleSheet("font-weight:bold; padding:6px;")
+
+    def _freq_changed(self):
+        hz = int(round(self.freq.value() * 1e6))
+        if hz != self.cfg.freq_hz:
+            self.cfg.freq_hz = hz
+            self.engine.retune()
+            self.engine.reset_afc()
+            self.cfg.save()
+
+    def _gain_changed(self):
+        if getattr(self, "_loading", False):
+            return
+        self.cfg.gain_db = float(self.gain.currentData())
+        self.engine.set_gain(self.cfg.gain_db)
+
+    def _ppm_changed(self):
+        if self.ppm.value() != self.cfg.ppm:
+            self.cfg.ppm = self.ppm.value()
+            self.engine.set_ppm(self.cfg.ppm)
+
+    def _offset_changed(self, v):
+        if getattr(self, "_loading", False):
+            return
+        self.cfg.manual_offset_hz = float(v)
+
+    def _checks_changed(self):
+        if getattr(self, "_loading", False):
+            return
+        c = self.cfg
+        c.doppler = self.chk_doppler.isChecked()
+        c.afc = self.chk_afc.isChecked()
+        c.bias_tee = self.chk_bias.isChecked()
+        c.auto_pass = self.chk_auto.isChecked()
+        wav = self.chk_wav.isChecked()
+        if wav != c.record_wav:
+            c.record_wav = wav
+            if self.engine.running:
+                self.engine.start_wav() if wav else self.engine.stop_wav()
+
+    def _decode_file(self):
+        path, _ = QFileDialog.getOpenFileName(self, "Decodifica registrazione audio", self.cfg.images_dir,
+                                              "Audio WAV (*.wav)")
+        if not path:
+            return
+        self.log_msg(f"Decodifica di {os.path.basename(path)}...")
+
+        def ev(kind, info):
+            if kind == "image" and info.get("path"):
+                try:
+                    write_report(info["path"], info, self.cfg, self.tracker, None,
+                                 source=f"decodifica del file {os.path.basename(path)} (orario da {when})")
+                except Exception as e:
+                    self.ui_q.put(lambda e=e: self.log_msg(f"Scheda .txt non scritta: {e}"))
+            self.ui_q.put(lambda: self._handle_event(kind, info))
+
+        when = "nome del file" if re.search(r"\d{8}_\d{6}Z", os.path.basename(path)) else "data del file, stima"
+
+        def run():
+            dec = decode_audio_file(path, self.cfg.images_dir, on_event=ev)
+            self.ui_q.put(lambda: self.log_msg(f"Decodifica file terminata: {dec.image_count} immagini"))
+        self._bg(run)
+
+    # ============================================================ timer
+    def _handle_event(self, kind, info):
+        if kind == "log":
+            self.log_msg(info)
+        elif kind == "error":
+            self.log_msg(info)
+            self._stop()
+        elif kind == "vis":
+            if info["supported"]:
+                self.log_msg("VIS Robot36 rilevato: inizio immagine")
+            else:
+                self.log_msg(f"VIS codice {info['code']} (non Robot36 o parità errata) ignorato")
+        elif kind == "start":
+            if info["mode"] == "sync":
+                self.log_msg("Treno di sync Robot36 rilevato (VIS perso): inizio immagine")
+        elif kind == "image":
+            tag = " (parziale)" if info["partial"] else ""
+            self.log_msg(f"Immagine salvata{tag}: {os.path.basename(info['path'] or '')} "
+                         f"[{info['lines']} righe, slant {info.get('slant_ppm', 0):+.0f} ppm]")
+            self.gallery.refresh()
+        elif kind == "discard":
+            self.log_msg(f"Falso avvio scartato ({info['lines']} righe)")
+
+    def _tick(self):
+        while True:
+            try:
+                fn = self.ui_q.get_nowait()
+            except queue.Empty:
+                break
+            fn()
+        while True:
+            try:
+                kind, info = self.engine.events.get_nowait()
+            except queue.Empty:
+                break
+            self._handle_event(kind, info)
+
+        s = self.engine.snapshot()
+        rows = self.engine.pop_spectrum()
+        if rows and self.engine.spec_freqs is not None:
+            self.wf.add_rows(self.engine.spec_freqs, rows)
+        if s["image_version"] != self.last_img_ver:
+            self.last_img_ver = s["image_version"]
+            self.live.set_image(s["image"])
+
+        f0 = self.cfg.freq_hz
+        eff = f0 + s["doppler"] + s["afc"] + self.cfg.manual_offset_hz
+        self.lbl_nom.setText(f"{f0 / 1e6:.4f} MHz")
+        self.lbl_dop.setText(fmt_hz(s["doppler"]) if self.cfg.doppler else "disattivato")
+        self.lbl_afc.setText(fmt_hz(s["afc"]) if self.cfg.afc else "disattivato")
+        self.lbl_eff.setText(f"{eff / 1e6:.5f} MHz")
+        if s["waiting"]:
+            self.snr_bar.setValue(-5)
+            self.lbl_sq.setText("In attesa del dongle… (collegalo o chiudi SDR#/SDR++)")
+            self.lbl_sq.setStyleSheet("color:#e08a2c; font-weight:bold;")
+        elif s["running"]:
+            self.snr_bar.setValue(int(round(s["snr"])))
+            self.lbl_sq.setText("Segnale presente (AFC attivo)" if s["squelch"] else "Nessun segnale")
+            self.lbl_sq.setStyleSheet("color:#2e7d32; font-weight:bold;" if s["squelch"] else "color:#888;")
+        else:
+            self.snr_bar.setValue(-5)
+            self.lbl_sq.setText("Ricevitore fermo")
+            self.lbl_sq.setStyleSheet("color:#888;")
+        self.lbl_dec.setText(s["status"])
+
+    def _slow_tick(self):
+        look = self.tracker.look()
+        now = datetime.now().astimezone()
+        if look:
+            az, el, dist, _ = look
+            self.lbl_iss.setText(f"Az {az:5.1f}°   El {el:+5.1f}°   {dist:,.0f} km".replace(",", "."))
+            self.lbl_iss.setStyleSheet("color:#2e7d32;" if el > 0 else "color:#555;")
+        else:
+            self.lbl_iss.setText("Imposta la posizione della stazione")
+        nxt = next((p for p in self.passes if p["los"] > now), None)
+        if nxt:
+            if nxt["aos"] <= now:
+                self.lbl_next.setText(f"PASSAGGIO IN CORSO - fine alle {nxt['los']:%H:%M:%S}, "
+                                      f"el. max {nxt['max_el']:.0f}°")
+            else:
+                dt = int((nxt["aos"] - now).total_seconds())
+                self.lbl_next.setText(f"Prossimo passaggio tra {dt // 3600:d}h {dt % 3600 // 60:02d}m "
+                                      f"{dt % 60:02d}s (el. max {nxt['max_el']:.0f}°)")
+        elif self.passes == [] and self.tracker.ready:
+            self.lbl_next.setText("Nessun passaggio nelle prossime 48 h")
+        # ricalcolo passaggi quando la lista si esaurisce
+        if self.tracker.ready and self.passes and self.passes[0]["los"] < now:
+            self.passes = self.passes[1:]
+            if len(self.passes) < 3:
+                self._bg(self._compute_passes)
+        # avvio/arresto automatico (orizzonte: elevazione > -1°)
+        if self.cfg.auto_pass and look:
+            el = look[1]
+            if el > -1.0 and not self.engine.running:
+                if self._start():
+                    self.auto_started = True
+                    self.log_msg("Avvio automatico: ISS in arrivo")
+                else:
+                    self.chk_auto.setChecked(False)
+                    self.log_msg("Avvio automatico disattivato: libreria RTL-SDR non utilizzabile")
+            elif el < -2.0 and self.engine.running and self.auto_started:
+                self._stop()
+                self.auto_started = False
+                self.log_msg("Arresto automatico: ISS sotto l'orizzonte")
+
+    def closeEvent(self, e):
+        self.engine.stop()
+        self.engine.monitor.stop()
+        self.cfg.save()
+        super().closeEvent(e)

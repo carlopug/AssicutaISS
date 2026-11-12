@@ -1,0 +1,27 @@
+# --- Ambiente Python ---
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# --- Dati personali della stazione (email, coordinate, nominativo) ---
+# modello pubblico: stazione.example.json
+stazione.json
+config.json
+
+# --- Ricezioni: immagini, schede ARISS (contengono l'email), registrazioni ---
+images/
+
+# --- Cache dei dati orbitali (riscaricati da Celestrak) ---
+data/
+
+# --- File di lavoro di Claude Code ---
+.claude-data/
+.claude/
+
+# --- Sistema operativo / editor ---
+Thumbs.db
+desktop.ini
+.DS_Store
+.idea/
+.vscode/

@@ -1,0 +1,22 @@
+{
+  "callsign": "IZ0ABC",
+  "operator_name": "Mario Rossi",
+  "email": "mario.rossi@example.com",
+  "category": "",
+  "lat": 41.9028,
+  "lon": 12.4964,
+  "alt_m": 50.0,
+  "continent": "Europe",
+  "min_el": 10.0,
+  "campaign": "Expedition 75 - ARISS Series 35 Space Memories",
+  "receiver": "RTL-SDR (RTL2832U + R820T2)",
+  "rx_sensitivity": "approx. 0.5 uV (-113 dBm), typical",
+  "rx_nf_db": 6.0,
+  "antenna": "Yagi 7 elementi 70 cm",
+  "antenna_gain_dbi": 11.0,
+  "preamp": "",
+  "preamp_gain_db": 0.0,
+  "cable": "RG-58, 10 m",
+  "cable_loss_db": 3.0,
+  "station_notes": ""
+}
