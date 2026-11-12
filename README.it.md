@@ -79,3 +79,6 @@ ciclo di scollegamento del dongle e la completezza della traduzione inglese.
 
 ## Versioni
 Vedi [CHANGELOG.md](CHANGELOG.md). La minor version si incrementa a ogni modifica.
+
+## Licenza
+Distribuito con [licenza MIT](LICENSE).

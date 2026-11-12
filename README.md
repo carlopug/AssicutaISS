@@ -78,3 +78,6 @@ hot-plug cycle and the completeness of the English translation.
 
 ## Version history
 See [CHANGELOG.md](CHANGELOG.md). The minor version is increased with every change.
+
+## License
+Released under the [MIT License](LICENSE).
