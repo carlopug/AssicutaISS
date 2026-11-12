@@ -6,6 +6,7 @@ import numpy as np
 from scipy.ndimage import uniform_filter1d
 from scipy.signal import firwin, lfilter
 
+from ..i18n import tr
 from .common import (FS, SYNC, SYNC_PORCH, Y_SCAN, SEPARATOR, PORCH, LINE, WIDTH, HEIGHT,
                      VIS_ROBOT36, freq_to_level, ycbcr_to_rgb)
 from .vis import find_vis
@@ -151,8 +152,8 @@ class Robot36Decoder:
     @property
     def status(self):
         if self.state == "search":
-            return "In attesa di segnale SSTV"
-        return f"Decodifica Robot36 ({'VIS' if self.mode == 'vis' else 'sync'}) - riga {self.line}/{HEIGHT}"
+            return tr("In attesa di segnale SSTV")
+        return tr("Decodifica Robot36 ({m}) - riga {n}/{h}", m='VIS' if self.mode == 'vis' else 'sync', n=self.line, h=HEIGHT)
 
     # ------------------------------------------------------- impulsi di sync
     def _scan_pulses(self):

@@ -3,6 +3,7 @@ import queue
 import threading
 import time
 
+from .i18n import tr
 from .receiver import BLOCK, FS_IN
 
 R820T_GAINS = [0.0, 0.9, 1.4, 2.7, 3.7, 7.7, 8.7, 12.5, 14.4, 15.7, 16.6, 19.7, 20.7, 22.9, 25.4,
@@ -25,7 +26,7 @@ class RtlSource:
         try:
             from rtlsdr import RtlSdr
         except Exception as e:  # DLL mancante o pacchetto non installato
-            raise RuntimeError(f"Libreria RTL-SDR non disponibile: {e}") from e
+            raise RuntimeError(tr("Libreria RTL-SDR non disponibile: {e}", e=e)) from e
         self.out = out_queue
         self.overflows = 0
         self.error = None

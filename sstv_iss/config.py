@@ -10,6 +10,7 @@ CONFIG_PATH = os.path.join(APP_DIR, "config.json")
 @dataclass
 class Config:
     # ---- stazione (stazione.json) ----
+    language: str = "it"            # lingua dell'interfaccia e delle schede: "it" o "en"
     callsign: str = ""
     operator_name: str = ""
     email: str = ""
@@ -84,6 +85,6 @@ class Config:
 
 
 STATION_PATH = os.path.join(APP_DIR, "stazione.json")
-STATION_KEYS = ("callsign", "operator_name", "email", "category", "lat", "lon", "alt_m", "continent", "min_el",
+STATION_KEYS = ("language", "callsign", "operator_name", "email", "category", "lat", "lon", "alt_m", "continent", "min_el",
                 "campaign", "receiver", "rx_sensitivity", "rx_nf_db", "antenna", "antenna_gain_dbi", "preamp",
                 "preamp_gain_db", "cable", "cable_loss_db", "station_notes")

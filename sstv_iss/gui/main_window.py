@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (QCheckBox, QComboBox, QDoubleSpinBox, QFileDialog
 
 from .. import WINDOW_TITLE, audio_out
 from ..config import APP_DIR
+from ..i18n import tr, weekday
 from ..doppler import IssTracker
 from ..engine import Engine
 from ..sdr_source import R820T_GAINS
@@ -37,6 +38,7 @@ class MainWindow(QMainWindow):
         self.passes = []
         self.last_img_ver = -1
         self.auto_started = False
+        self.lang_at_start = cfg.language
         self.setWindowTitle(WINDOW_TITLE)
         self.resize(1400, 820)
         self._build()
@@ -62,13 +64,13 @@ class MainWindow(QMainWindow):
 
         # ---- barra controlli
         bar = QHBoxLayout()
-        self.btn_start = QPushButton("▶  Avvia ricezione")
+        self.btn_start = QPushButton(tr("▶  Avvia ricezione"))
         self.btn_start.setMinimumWidth(170)
         self.btn_start.setStyleSheet("font-weight:bold; padding:6px;")
         self.btn_start.clicked.connect(self._toggle)
         bar.addWidget(self.btn_start)
 
-        bar.addWidget(QLabel("Frequenza"))
+        bar.addWidget(QLabel(tr("Frequenza")))
         self.freq = QDoubleSpinBox()
         self.freq.setRange(24.0, 1766.0)
         self.freq.setDecimals(4)
@@ -77,7 +79,7 @@ class MainWindow(QMainWindow):
         self.freq.editingFinished.connect(self._freq_changed)
         bar.addWidget(self.freq)
 
-        bar.addWidget(QLabel("Guadagno"))
+        bar.addWidget(QLabel(tr("Guadagno")))
         self.gain = QComboBox()
         self.gain.addItem("Auto", -1.0)
         for g in R820T_GAINS:
@@ -94,24 +96,24 @@ class MainWindow(QMainWindow):
         self.chk_doppler = QCheckBox("Doppler")
         self.chk_afc = QCheckBox("AFC")
         self.chk_bias = QCheckBox("Bias-T")
-        self.chk_wav = QCheckBox("Registra WAV")
-        self.chk_auto = QCheckBox("Avvio automatico ai passaggi")
+        self.chk_wav = QCheckBox(tr("Registra WAV"))
+        self.chk_auto = QCheckBox(tr("Avvio automatico ai passaggi"))
         bar2 = QHBoxLayout()
         for c in (self.chk_doppler, self.chk_afc, self.chk_bias, self.chk_wav, self.chk_auto):
             c.toggled.connect(self._checks_changed)
             bar2.addWidget(c)
         bar2.addSpacing(24)
-        self.chk_mon = QCheckBox("Ascolto")
-        self.chk_mon.setToolTip("Riproduce l'audio demodulato per sentire il segnale")
+        self.chk_mon = QCheckBox(tr("Ascolto"))
+        self.chk_mon.setToolTip(tr("Riproduce l'audio demodulato per sentire il segnale"))
         self.cmb_out = QComboBox()
         self.cmb_out.setMinimumWidth(260)
-        self.cmb_out.addItem("Uscita predefinita di Windows", "")
+        self.cmb_out.addItem(tr("Uscita predefinita di Windows"), "")
         for name in audio_out.list_outputs():
             self.cmb_out.addItem(name, name)
         self.sld_vol = QSlider(Qt.Horizontal)
         self.sld_vol.setRange(0, 100)
         self.sld_vol.setFixedWidth(120)
-        self.chk_mute = QCheckBox("Silenzia senza segnale")
+        self.chk_mute = QCheckBox(tr("Silenzia senza segnale"))
         bar2.addWidget(self.chk_mon)
         bar2.addWidget(self.cmb_out)
         bar2.addWidget(QLabel("Volume"))
@@ -120,7 +122,7 @@ class MainWindow(QMainWindow):
         if not audio_out.available():
             for w in (self.chk_mon, self.cmb_out, self.sld_vol, self.chk_mute):
                 w.setEnabled(False)
-            self.chk_mon.setToolTip(f"Ascolto non disponibile: {audio_out.IMPORT_ERROR}")
+            self.chk_mon.setToolTip(tr("Ascolto non disponibile: {e}", e=audio_out.IMPORT_ERROR))
         self.chk_mon.toggled.connect(self._monitor_changed)
         self.cmb_out.currentIndexChanged.connect(self._monitor_changed)
         self.sld_vol.valueChanged.connect(self._monitor_volume)
@@ -153,7 +155,7 @@ class MainWindow(QMainWindow):
         # pannello sinistro
         left = QWidget()
         ll = QVBoxLayout(left)
-        g_freq = QGroupBox("Frequenze")
+        g_freq = QGroupBox(tr("Frequenze"))
         gf = QGridLayout(g_freq)
         big = QFont()
         big.setPointSize(13)
@@ -163,16 +165,16 @@ class MainWindow(QMainWindow):
         self.lbl_afc = QLabel()
         self.lbl_eff = QLabel()
         self.lbl_eff.setFont(big)
-        for i, (t, w) in enumerate((("Nominale", self.lbl_nom), ("Doppler (TLE)", self.lbl_dop),
-                                    ("AFC", self.lbl_afc), ("Sintonia effettiva", self.lbl_eff))):
+        for i, (t, w) in enumerate(((tr("Nominale"), self.lbl_nom), ("Doppler (TLE)", self.lbl_dop),
+                                    ("AFC", self.lbl_afc), (tr("Sintonia effettiva"), self.lbl_eff))):
             gf.addWidget(QLabel(t), i, 0)
             gf.addWidget(w, i, 1)
-        btn_afc = QPushButton("Azzera AFC")
+        btn_afc = QPushButton(tr("Azzera AFC"))
         btn_afc.clicked.connect(self.engine.reset_afc)
         gf.addWidget(btn_afc, 4, 0, 1, 2)
         ll.addWidget(g_freq)
 
-        g_sig = QGroupBox("Segnale")
+        g_sig = QGroupBox(tr("Segnale"))
         gs = QVBoxLayout(g_sig)
         self.snr_bar = QProgressBar()
         self.snr_bar.setRange(-5, 40)
@@ -191,15 +193,15 @@ class MainWindow(QMainWindow):
         self.lbl_iss.setFont(big)
         self.lbl_next = QLabel("-")
         self.lbl_next.setWordWrap(True)
-        self.lbl_tle = QLabel("TLE: caricamento...")
+        self.lbl_tle = QLabel(tr("TLE: caricamento..."))
         self.lbl_tle.setWordWrap(True)
         self.lbl_tle.setStyleSheet("color:#888;")
         gi.addWidget(self.lbl_iss)
         gi.addWidget(self.lbl_next)
         hb = QHBoxLayout()
-        b1 = QPushButton("Stazione e nominativo...")
+        b1 = QPushButton(tr("Stazione e nominativo..."))
         b1.clicked.connect(self._edit_station)
-        b2 = QPushButton("Aggiorna TLE")
+        b2 = QPushButton(tr("Aggiorna TLE"))
         b2.clicked.connect(lambda: self._bg(lambda: self._load_tle_and_passes(force=True)))
         hb.addWidget(b1)
         hb.addWidget(b2)
@@ -207,10 +209,10 @@ class MainWindow(QMainWindow):
         gi.addWidget(self.lbl_tle)
         ll.addWidget(g_iss)
 
-        g_pass = QGroupBox("Prossimi passaggi (48 h)")
+        g_pass = QGroupBox(tr("Prossimi passaggi (48 h)"))
         gp = QVBoxLayout(g_pass)
         self.tbl = QTableWidget(0, 4)
-        self.tbl.setHorizontalHeaderLabels(["Giorno", "Inizio", "Fine", "El. max"])
+        self.tbl.setHorizontalHeaderLabels([tr("Giorno"), tr("Inizio"), tr("Fine"), tr("El. max")])
         self.tbl.verticalHeader().setVisible(False)
         self.tbl.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.tbl.setEditTriggers(QTableWidget.NoEditTriggers)
@@ -226,18 +228,18 @@ class MainWindow(QMainWindow):
         # destra: immagine + galleria
         right = QWidget()
         rl = QVBoxLayout(right)
-        rl.addWidget(QLabel("Immagine in ricezione"))
+        rl.addWidget(QLabel(tr("Immagine in ricezione")))
         self.live = LiveImage()
         rl.addWidget(self.live, 3)
         hb2 = QHBoxLayout()
-        b_dec = QPushButton("Decodifica file WAV...")
+        b_dec = QPushButton(tr("Decodifica file WAV..."))
         b_dec.clicked.connect(self._decode_file)
-        b_open = QPushButton("Apri cartella immagini")
+        b_open = QPushButton(tr("Apri cartella immagini"))
         b_open.clicked.connect(lambda: os.startfile(self.cfg.images_dir))
         hb2.addWidget(b_dec)
         hb2.addWidget(b_open)
         rl.addLayout(hb2)
-        rl.addWidget(QLabel("Immagini ricevute (doppio clic per aprire)"))
+        rl.addWidget(QLabel(tr("Immagini ricevute (doppio clic per aprire)")))
         self.gallery = Gallery(self.cfg.images_dir)
         rl.addWidget(self.gallery, 2)
         right.setMinimumWidth(360)
@@ -280,13 +282,13 @@ class MainWindow(QMainWindow):
         if not c.monitor:
             if mon.active:
                 mon.stop()
-                self.log_msg("Ascolto disattivato")
+                self.log_msg(tr("Ascolto disattivato"))
             return
         try:
             mon.start(c.monitor_device or None)
-            self.log_msg(f"Ascolto su: {self.cmb_out.currentText()}")
+            self.log_msg(tr("Ascolto su: {o}", o=self.cmb_out.currentText()))
         except Exception as e:
-            self.log_msg(f"Impossibile aprire l'uscita audio: {e}")
+            self.log_msg(tr("Impossibile aprire l'uscita audio: {e}", e=e))
             self._loading = True
             self.chk_mon.setChecked(False)
             self._loading = False
@@ -320,7 +322,7 @@ class MainWindow(QMainWindow):
             try:
                 fn()
             except Exception as e:
-                self.ui_q.put(lambda: self.log_msg(f"Errore: {e}"))
+                self.ui_q.put(lambda: self.log_msg(tr("Errore: {e}", e=e)))
         threading.Thread(target=run, daemon=True).start()
 
     def _load_tle_and_passes(self, force=False):
@@ -336,7 +338,7 @@ class MainWindow(QMainWindow):
         self.passes = passes
         self.tbl.setRowCount(len(passes))
         for r, p in enumerate(passes):
-            vals = [f"{p['aos']:%a %d/%m}", f"{p['aos']:%H:%M:%S}", f"{p['los']:%H:%M:%S}", f"{p['max_el']:.0f}°"]
+            vals = [f"{weekday(p['aos'])} {p['aos']:%d/%m}", f"{p['aos']:%H:%M:%S}", f"{p['los']:%H:%M:%S}", f"{p['max_el']:.0f}°"]
             for c, v in enumerate(vals):
                 it = QTableWidgetItem(v)
                 it.setTextAlignment(Qt.AlignCenter)
@@ -351,8 +353,10 @@ class MainWindow(QMainWindow):
             self.cfg.save_station()
             self.tracker.set_station(self.cfg.lat, self.cfg.lon, self.cfg.alt_m)
             c = self.cfg
-            self.log_msg(f"Stazione {c.callsign or 'SWL'}: {c.lat:.4f}, {c.lon:.4f}, {c.alt_m:.0f} m, "
-                         f"locator {maidenhead(c.lat, c.lon)} - salvata in stazione.json")
+            self.log_msg(tr("Stazione {call}: {lat:.4f}, {lon:.4f}, {alt:.0f} m, locator {grid} - salvata in stazione.json",
+                            call=c.callsign or "SWL", lat=c.lat, lon=c.lon, alt=c.alt_m, grid=maidenhead(c.lat, c.lon)))
+            if c.language != self.lang_at_start:
+                self._offer_restart()
             self._bg(self._compute_passes)
 
     def _toggle(self):
@@ -366,16 +370,16 @@ class MainWindow(QMainWindow):
             self.engine.reset_afc()
             self.engine.start()
         except Exception as e:  # solo errori definitivi: se il dongle manca, l'engine resta in attesa
-            QMessageBox.critical(self, "Errore ricevitore", str(e))
+            QMessageBox.critical(self, tr("Errore ricevitore"), str(e))
             self.log_msg(str(e))
             return False
-        self.btn_start.setText("■  Ferma ricezione")
+        self.btn_start.setText(tr("■  Ferma ricezione"))
         self.btn_start.setStyleSheet("font-weight:bold; padding:6px; background:#c62828; color:white;")
         return True
 
     def _stop(self):
         self.engine.stop()
-        self.btn_start.setText("▶  Avvia ricezione")
+        self.btn_start.setText(tr("▶  Avvia ricezione"))
         self.btn_start.setStyleSheet("font-weight:bold; padding:6px;")
 
     def _freq_changed(self):
@@ -417,26 +421,26 @@ class MainWindow(QMainWindow):
                 self.engine.start_wav() if wav else self.engine.stop_wav()
 
     def _decode_file(self):
-        path, _ = QFileDialog.getOpenFileName(self, "Decodifica registrazione audio", self.cfg.images_dir,
+        path, _ = QFileDialog.getOpenFileName(self, tr("Decodifica registrazione audio"), self.cfg.images_dir,
                                               "Audio WAV (*.wav)")
         if not path:
             return
-        self.log_msg(f"Decodifica di {os.path.basename(path)}...")
+        self.log_msg(tr("Decodifica di {f}...", f=os.path.basename(path)))
 
         def ev(kind, info):
             if kind == "image" and info.get("path"):
                 try:
                     write_report(info["path"], info, self.cfg, self.tracker, None,
-                                 source=f"decodifica del file {os.path.basename(path)} (orario da {when})")
+                                 source=tr("decodifica del file {f} (orario da {when})", f=os.path.basename(path), when=when))
                 except Exception as e:
-                    self.ui_q.put(lambda e=e: self.log_msg(f"Scheda .txt non scritta: {e}"))
+                    self.ui_q.put(lambda e=e: self.log_msg(tr("Scheda .txt non scritta: {e}", e=e)))
             self.ui_q.put(lambda: self._handle_event(kind, info))
 
-        when = "nome del file" if re.search(r"\d{8}_\d{6}Z", os.path.basename(path)) else "data del file, stima"
+        when = tr("nome del file") if re.search(r"\d{8}_\d{6}Z", os.path.basename(path)) else tr("data del file, stima")
 
         def run():
             dec = decode_audio_file(path, self.cfg.images_dir, on_event=ev)
-            self.ui_q.put(lambda: self.log_msg(f"Decodifica file terminata: {dec.image_count} immagini"))
+            self.ui_q.put(lambda: self.log_msg(tr("Decodifica file terminata: {n} immagini", n=dec.image_count)))
         self._bg(run)
 
     # ============================================================ timer
@@ -448,19 +452,19 @@ class MainWindow(QMainWindow):
             self._stop()
         elif kind == "vis":
             if info["supported"]:
-                self.log_msg("VIS Robot36 rilevato: inizio immagine")
+                self.log_msg(tr("VIS Robot36 rilevato: inizio immagine"))
             else:
-                self.log_msg(f"VIS codice {info['code']} (non Robot36 o parità errata) ignorato")
+                self.log_msg(tr("VIS codice {c} (non Robot36 o parità errata) ignorato", c=info["code"]))
         elif kind == "start":
             if info["mode"] == "sync":
-                self.log_msg("Treno di sync Robot36 rilevato (VIS perso): inizio immagine")
+                self.log_msg(tr("Treno di sync Robot36 rilevato (VIS perso): inizio immagine"))
         elif kind == "image":
-            tag = " (parziale)" if info["partial"] else ""
-            self.log_msg(f"Immagine salvata{tag}: {os.path.basename(info['path'] or '')} "
-                         f"[{info['lines']} righe, slant {info.get('slant_ppm', 0):+.0f} ppm]")
+            tag = tr(" (parziale)") if info["partial"] else ""
+            self.log_msg(tr("Immagine salvata{tag}: {f} [{n} righe, slant {ppm:+.0f} ppm]", tag=tag,
+                            f=os.path.basename(info["path"] or ""), n=info["lines"], ppm=info.get("slant_ppm", 0)))
             self.gallery.refresh()
         elif kind == "discard":
-            self.log_msg(f"Falso avvio scartato ({info['lines']} righe)")
+            self.log_msg(tr("Falso avvio scartato ({n} righe)", n=info["lines"]))
 
     def _tick(self):
         while True:
@@ -487,20 +491,20 @@ class MainWindow(QMainWindow):
         f0 = self.cfg.freq_hz
         eff = f0 + s["doppler"] + s["afc"] + self.cfg.manual_offset_hz
         self.lbl_nom.setText(f"{f0 / 1e6:.4f} MHz")
-        self.lbl_dop.setText(fmt_hz(s["doppler"]) if self.cfg.doppler else "disattivato")
-        self.lbl_afc.setText(fmt_hz(s["afc"]) if self.cfg.afc else "disattivato")
+        self.lbl_dop.setText(fmt_hz(s["doppler"]) if self.cfg.doppler else tr("disattivato"))
+        self.lbl_afc.setText(fmt_hz(s["afc"]) if self.cfg.afc else tr("disattivato"))
         self.lbl_eff.setText(f"{eff / 1e6:.5f} MHz")
         if s["waiting"]:
             self.snr_bar.setValue(-5)
-            self.lbl_sq.setText("In attesa del dongle… (collegalo o chiudi SDR#/SDR++)")
+            self.lbl_sq.setText(tr("In attesa del dongle… (collegalo o chiudi SDR#/SDR++)"))
             self.lbl_sq.setStyleSheet("color:#e08a2c; font-weight:bold;")
         elif s["running"]:
             self.snr_bar.setValue(int(round(s["snr"])))
-            self.lbl_sq.setText("Segnale presente (AFC attivo)" if s["squelch"] else "Nessun segnale")
+            self.lbl_sq.setText(tr("Segnale presente (AFC attivo)") if s["squelch"] else tr("Nessun segnale"))
             self.lbl_sq.setStyleSheet("color:#2e7d32; font-weight:bold;" if s["squelch"] else "color:#888;")
         else:
             self.snr_bar.setValue(-5)
-            self.lbl_sq.setText("Ricevitore fermo")
+            self.lbl_sq.setText(tr("Ricevitore fermo"))
             self.lbl_sq.setStyleSheet("color:#888;")
         self.lbl_dec.setText(s["status"])
 
@@ -512,18 +516,18 @@ class MainWindow(QMainWindow):
             self.lbl_iss.setText(f"Az {az:5.1f}°   El {el:+5.1f}°   {dist:,.0f} km".replace(",", "."))
             self.lbl_iss.setStyleSheet("color:#2e7d32;" if el > 0 else "color:#555;")
         else:
-            self.lbl_iss.setText("Imposta la posizione della stazione")
+            self.lbl_iss.setText(tr("Imposta la posizione della stazione"))
         nxt = next((p for p in self.passes if p["los"] > now), None)
         if nxt:
             if nxt["aos"] <= now:
-                self.lbl_next.setText(f"PASSAGGIO IN CORSO - fine alle {nxt['los']:%H:%M:%S}, "
-                                      f"el. max {nxt['max_el']:.0f}°")
+                self.lbl_next.setText(tr("PASSAGGIO IN CORSO - fine alle {t}, el. max {el:.0f}°",
+                                         t=f"{nxt['los']:%H:%M:%S}", el=nxt["max_el"]))
             else:
                 dt = int((nxt["aos"] - now).total_seconds())
-                self.lbl_next.setText(f"Prossimo passaggio tra {dt // 3600:d}h {dt % 3600 // 60:02d}m "
-                                      f"{dt % 60:02d}s (el. max {nxt['max_el']:.0f}°)")
+                self.lbl_next.setText(tr("Prossimo passaggio tra {h:d}h {m:02d}m {s:02d}s (el. max {el:.0f}°)",
+                                         h=dt // 3600, m=dt % 3600 // 60, s=dt % 60, el=nxt["max_el"]))
         elif self.passes == [] and self.tracker.ready:
-            self.lbl_next.setText("Nessun passaggio nelle prossime 48 h")
+            self.lbl_next.setText(tr("Nessun passaggio nelle prossime 48 h"))
         # ricalcolo passaggi quando la lista si esaurisce
         if self.tracker.ready and self.passes and self.passes[0]["los"] < now:
             self.passes = self.passes[1:]
@@ -535,14 +539,25 @@ class MainWindow(QMainWindow):
             if el > -1.0 and not self.engine.running:
                 if self._start():
                     self.auto_started = True
-                    self.log_msg("Avvio automatico: ISS in arrivo")
+                    self.log_msg(tr("Avvio automatico: ISS in arrivo"))
                 else:
                     self.chk_auto.setChecked(False)
-                    self.log_msg("Avvio automatico disattivato: libreria RTL-SDR non utilizzabile")
+                    self.log_msg(tr("Avvio automatico disattivato: libreria RTL-SDR non utilizzabile"))
             elif el < -2.0 and self.engine.running and self.auto_started:
                 self._stop()
                 self.auto_started = False
-                self.log_msg("Arresto automatico: ISS sotto l'orizzonte")
+                self.log_msg(tr("Arresto automatico: ISS sotto l'orizzonte"))
+
+    def _offer_restart(self):
+        r = QMessageBox.question(self, tr("Lingua"),
+                                 tr("La nuova lingua sarà usata al prossimo avvio. Riavviare ora AssicutaISS?"))
+        if r == QMessageBox.Yes:
+            import subprocess
+            import sys
+            self.close()
+            subprocess.Popen([sys.executable, os.path.join(APP_DIR, "main.py")], cwd=APP_DIR)
+            from PySide6.QtWidgets import QApplication
+            QApplication.quit()
 
     def closeEvent(self, e):
         self.engine.stop()

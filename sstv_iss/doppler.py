@@ -6,6 +6,7 @@ import urllib.request
 from datetime import datetime, timedelta, timezone
 
 from . import __version__
+from .i18n import tr
 from skyfield.api import EarthSatellite, load, wgs84
 
 C = 299_792_458.0
@@ -37,11 +38,11 @@ class IssTracker:
                 os.makedirs(os.path.dirname(self.cache_path), exist_ok=True)
                 with open(self.cache_path, "w", encoding="ascii") as f:
                     f.write(text.strip() + "\n")
-                msg = "TLE ISS aggiornato da Celestrak"
+                msg = tr("TLE ISS aggiornato da Celestrak")
             except Exception as e:  # rete assente: si usa la cache
-                msg = f"Download TLE fallito ({e}); uso la copia locale"
+                msg = tr("Download TLE fallito ({e}); uso la copia locale", e=e)
         if not os.path.exists(self.cache_path):
-            return msg + " - nessun TLE disponibile: Doppler disattivato"
+            return msg + tr(" - nessun TLE disponibile: Doppler disattivato")
         with open(self.cache_path, encoding="ascii") as f:
             lines = [ln.rstrip() for ln in f if ln.strip()]
         l1 = next(ln for ln in lines if ln.startswith("1 "))
@@ -51,7 +52,7 @@ class IssTracker:
             self.sat = sat
             self.tle_epoch = sat.epoch.utc_datetime()
         age = (datetime.now(timezone.utc) - self.tle_epoch).total_seconds() / 86400
-        return (msg + "; " if msg else "") + f"TLE epoca {self.tle_epoch:%d/%m %H:%M} UTC ({age:.1f} giorni)"
+        return (msg + "; " if msg else "") + tr("TLE epoca {d} UTC ({age:.1f} giorni)", d=f"{self.tle_epoch:%d/%m %H:%M}", age=age)
 
     def set_station(self, lat, lon, alt_m):
         with self._lock:

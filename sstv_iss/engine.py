@@ -9,6 +9,7 @@ import wave
 import numpy as np
 
 from .audio_out import AudioMonitor
+from .i18n import tr
 from .receiver import BLOCK, FS_AUDIO, FS_IN, Receiver
 from .report import write_report
 from .sdr_source import DongleUnavailable, RtlSource
@@ -71,7 +72,7 @@ class Engine:
         try:
             import rtlsdr  # noqa: F401  (errore definitivo: inutile aspettare)
         except Exception as e:
-            raise RuntimeError(f"Libreria RTL-SDR non disponibile: {e}") from e
+            raise RuntimeError(tr("Libreria RTL-SDR non disponibile: {e}", e=e)) from e
         self.iq_q = queue.Queue(maxsize=40)
         self.rx = Receiver(FS_IN, deemph_us=self.cfg.deemph_us)
         self.spec_freqs = self.rx.spec_freqs
@@ -99,7 +100,7 @@ class Engine:
         with self.lock:
             self.decoder.flush()
         self.stop_wav()
-        self.events.put(("log", "Ricevitore fermato"))
+        self.events.put(("log", tr("Ricevitore fermato")))
 
     def _connect(self):
         src = RtlSource(self.iq_q, self.hw_center(), self.cfg.gain_db, self.cfg.ppm, self.cfg.bias_tee)
@@ -121,26 +122,26 @@ class Engine:
                 try:
                     self._connect()
                     announced_wait = False
-                    self.events.put(("log", f"Dongle collegato: ricezione su {self.cfg.freq_hz / 1e6:.4f} MHz"))
+                    self.events.put(("log", tr("Dongle collegato: ricezione su {f:.4f} MHz", f=self.cfg.freq_hz / 1e6)))
                 except DongleUnavailable as e:
                     if not announced_wait:
-                        self.events.put(("log", "In attesa del dongle RTL-SDR (collegalo o chiudi SDR#/SDR++): "
-                                                f"riprovo ogni {RETRY_S:.0f} s. [{e}]"))
+                        self.events.put(("log", tr("In attesa del dongle RTL-SDR (collegalo o chiudi SDR#/SDR++): "
+                                                   "riprovo ogni {s:.0f} s. [{e}]", s=RETRY_S, e=e)))
                         announced_wait = True
                 except Exception as e:
-                    self.events.put(("error", f"Errore dongle: {e}"))
+                    self.events.put(("error", tr("Errore dongle: {e}", e=e)))
                     return
             elif self.src.lost(DATA_TIMEOUT_S):
                 src, self.src = self.src, None
-                reason = src.error or ("nessun dato dal dongle" if not src.ended else "lettura interrotta")
-                self.events.put(("log", f"Dongle scollegato ({reason}): chiudo l'immagine in corso e attendo"))
+                reason = src.error or (tr("nessun dato dal dongle") if not src.ended else tr("lettura interrotta"))
+                self.events.put(("log", tr("Dongle scollegato ({r}): chiudo l'immagine in corso e attendo", r=reason)))
                 threading.Thread(target=src.stop, daemon=True).start()  # può bloccarsi nel driver
                 with self.lock:
                     self.decoder.flush()
                 self.snr_db = -20.0
                 self.squelch_open = False
                 announced_wait = True
-                self.events.put(("log", f"In attesa del dongle RTL-SDR: riprovo ogni {RETRY_S:.0f} s"))
+                self.events.put(("log", tr("In attesa del dongle RTL-SDR: riprovo ogni {s:.0f} s", s=RETRY_S)))
             self._wake.wait(RETRY_S if self.src is None else 0.5)
 
     def hw_center(self):
@@ -153,7 +154,7 @@ class Engine:
         try:
             fn(src)
         except Exception as e:  # dongle appena scollegato: se ne accorgerà il supervisore
-            self.events.put(("log", f"Comando al dongle non riuscito: {e}"))
+            self.events.put(("log", tr("Comando al dongle non riuscito: {e}", e=e)))
 
     def retune(self):
         self._src_call(lambda s: s.set_center(self.hw_center()))
@@ -178,7 +179,7 @@ class Engine:
         w.setsampwidth(2)
         w.setframerate(FS_AUDIO)
         self.wav = w
-        self.events.put(("log", f"Registrazione audio: {self.wav_path}"))
+        self.events.put(("log", tr("Registrazione audio: {p}", p=self.wav_path)))
 
     def stop_wav(self):
         w, self.wav = self.wav, None
@@ -247,9 +248,9 @@ class Engine:
     def _write_report(self, info, stats):
         try:
             txt = write_report(info["path"], info, self.cfg, self.tracker, stats)
-            self.events.put(("log", f"Scheda ARISS: {os.path.basename(txt)}"))
+            self.events.put(("log", tr("Scheda ARISS: {f}", f=os.path.basename(txt))))
         except Exception as e:
-            self.events.put(("log", f"Scheda .txt non scritta: {e}"))
+            self.events.put(("log", tr("Scheda .txt non scritta: {e}", e=e)))
 
     # ---------------------------------------------------------- per la GUI
     def snapshot(self):

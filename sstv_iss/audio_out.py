@@ -3,6 +3,8 @@ import threading
 
 import numpy as np
 
+from .i18n import tr
+
 try:
     import sounddevice as sd
     IMPORT_ERROR = None
@@ -64,7 +66,7 @@ class AudioMonitor:
     def start(self, device_name=None):
         """Apre l'uscita. device_name None = uscita predefinita di Windows."""
         if sd is None:
-            raise RuntimeError(f"Ascolto non disponibile: {IMPORT_ERROR}")
+            raise RuntimeError(tr("Ascolto non disponibile: {e}", e=IMPORT_ERROR))
         self.stop()
         dev = _device_index(device_name) if device_name else None
         with self._lock:
