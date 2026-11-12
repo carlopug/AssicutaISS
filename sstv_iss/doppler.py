@@ -113,6 +113,34 @@ class IssTracker:
             return None
         return {"aos": aos, "tca": tca, "los": los, "max_el": max_el}
 
+    def pass_around(self, unix):
+        """Passaggio in corso o che inizia entro 30 minuti dall'istante `unix` (orizzonte 0°).
+
+        Restituisce dict aos/tca/los (datetime UTC) e max_el, oppure None.
+        """
+        with self._lock:
+            sat, topos = self.sat, self.topos
+        if sat is None or topos is None:
+            return None
+        t = datetime.fromtimestamp(unix, timezone.utc)
+        t0 = self.ts.from_datetime(t - timedelta(minutes=20))
+        t1 = self.ts.from_datetime(t + timedelta(minutes=30))
+        times, events = sat.find_events(topos, t0, t1, altitude_degrees=0.0)
+        cur = {}
+        for tt, e in zip(times, events):
+            dt = tt.utc_datetime()
+            if e == 0:
+                cur = {"aos": dt}
+            elif e == 1 and "aos" in cur:
+                cur["tca"] = dt
+                cur["max_el"] = (sat - topos).at(tt).altaz()[0].degrees
+            elif e == 2 and "tca" in cur:
+                cur["los"] = dt
+                if dt > t:
+                    return cur
+                cur = {}
+        return None
+
     def passes(self, hours=48, min_el=10.0):
         """Lista di passaggi: dict(aos, tca, los: datetime locali, max_el: gradi)."""
         with self._lock:

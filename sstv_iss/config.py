@@ -48,6 +48,7 @@ class Config:
     monitor_volume: int = 30        # 0..100
     monitor_mute: bool = False      # silenzia quando lo squelch è chiuso
     auto_pass: bool = False
+    auto_min_el: float = 10.0       # avvio automatico solo se l'elevazione massima del passaggio è almeno questa
     images_dir: str = os.path.join(APP_DIR, "images")
     if_offset_hz: int = 250_000
 

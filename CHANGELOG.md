@@ -3,6 +3,13 @@
 Numerazione MAJOR.MINOR: la minor version si incrementa a ogni modifica al programma.
 Il numero sta in `sstv_iss/__init__.py` (`__version__`) e compare nel titolo della finestra.
 
+## 1.3 - 12/11/2026
+- Elevazione minima per l'avvio automatico (campo «se el. max ≥», predefinito 10°): i passaggi con
+  elevazione massima inferiore vengono saltati, con una riga nel registro. Per quelli validi la ricezione
+  parte comunque all'orizzonte, così non si perde l'inizio.
+- Nella tabella dei passaggi quelli sotto la soglia sono in grigio.
+- Nuovo test dell'avvio automatico.
+
 ## 1.2 - 12/11/2026
 - Registro di sessione su file: `logs/AAAAMMGG_HHMMSSZ.log` (UTC), con tutto quello che compare nella finestra.
 - Impostazioni complete del ricevitore e della stazione registrate all'avvio del programma e a ogni avvio

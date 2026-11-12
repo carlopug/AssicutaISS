@@ -94,7 +94,6 @@ EN = {
     "Prossimo passaggio tra {h:d}h {m:02d}m {s:02d}s (el. max {el:.0f}°)":
         "Next pass in {h:d}h {m:02d}m {s:02d}s (max el. {el:.0f}°)",
     "Nessun passaggio nelle prossime 48 h": "No passes in the next 48 h",
-    "Avvio automatico: ISS in arrivo": "Auto-start: ISS approaching",
     "Avvio automatico disattivato: libreria RTL-SDR non utilizzabile": "Auto-start disabled: RTL-SDR library not usable",
     "Arresto automatico: ISS sotto l'orizzonte": "Auto-stop: ISS below the horizon",
     "Lingua": "Language",
@@ -195,6 +194,16 @@ EN = {
     "{s}, limite ±{l:.0f} Hz": "{s}, limit ±{l:.0f} Hz",
     "De-enfasi": "De-emphasis",
     "Offset di sintonia del dongle": "Dongle tuning offset",
+
+    # ---- elevazione minima per l'avvio automatico
+    "Elevazione minima per l'avvio automatico": "Minimum elevation for auto-start",
+    "se el. max ≥": "if max el. ≥",
+    "L'avvio automatico salta i passaggi la cui elevazione massima è inferiore a questo valore":
+        "Auto-start skips passes whose maximum elevation is below this value",
+    "Sotto la soglia dell'avvio automatico": "Below the auto-start threshold",
+    "Avvio automatico: passaggio saltato, el. max {e:.0f}° sotto la soglia di {s:.0f}°":
+        "Auto-start: pass skipped, max el. {e:.0f}° below the {s:.0f}° threshold",
+    "Avvio automatico: ISS in arrivo (el. max {e})": "Auto-start: ISS approaching (max el. {e})",
 
     # ---- scheda .txt
     "(non impostato)": "(not set)",

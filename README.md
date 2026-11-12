@@ -1,6 +1,6 @@
 # AssicutaISS
 
-*an ISS SSTV Receiver for Robot36*, version 1.2 · [Leggi in italiano](README.it.md)
+*an ISS SSTV Receiver for Robot36*, version 1.3 · [Leggi in italiano](README.it.md)
 
 A Windows desktop program that receives the **Robot36** SSTV images transmitted by the International Space
 Station during ARISS events (437.550 MHz FM) with an **RTL-SDR** dongle. No SDR#/SDR++ + MMSSTV + virtual
@@ -18,7 +18,8 @@ The interface and the image reports are available in **Italian and English**.
   tracks the residual error on the received signal.
 - Robust decoder: starts on the VIS header or, if VIS is lost to fading, on the train of sync pulses;
   automatic slant correction; protection against false starts on noise.
-- **Pass prediction** for your station and optional **automatic start/stop** at each pass.
+- **Pass prediction** for your station and optional **automatic start/stop** at each pass, skipping passes
+  whose maximum elevation is below a threshold you choose (10° by default).
 - **Dongle hot-plug**: if the dongle is missing, busy or gets unplugged, the receiver waits and resumes on its own.
 - Optional **audio monitor** on any output device (speakers, headphones, or a virtual cable to another decoder).
 - Each image is saved as `YYYYMMDD_HHMMSSZ.png` (UTC) with a `.txt` report holding every field of the

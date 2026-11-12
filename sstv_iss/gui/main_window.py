@@ -39,6 +39,8 @@ class MainWindow(QMainWindow):
         self.passes = []
         self.last_img_ver = -1
         self.auto_started = False
+        self._auto_pass = None      # passaggio valutato per l'avvio automatico (cache fino al LOS)
+        self._auto_skipped = None   # AOS del passaggio già annunciato come saltato
         self.lang_at_start = cfg.language
         self.session_log = SessionLog()
         self._settings = dict(settings_items(cfg))
@@ -111,6 +113,14 @@ class MainWindow(QMainWindow):
         for c in (self.chk_doppler, self.chk_afc, self.chk_bias, self.chk_wav, self.chk_auto):
             c.toggled.connect(self._checks_changed)
             bar2.addWidget(c)
+        bar2.addWidget(QLabel(tr("se el. max ≥")))
+        self.auto_min_el = QSpinBox()
+        self.auto_min_el.setRange(0, 90)
+        self.auto_min_el.setSuffix("°")
+        self.auto_min_el.setToolTip(tr("L'avvio automatico salta i passaggi la cui elevazione massima "
+                                       "è inferiore a questo valore"))
+        self.auto_min_el.valueChanged.connect(self._auto_min_el_changed)
+        bar2.addWidget(self.auto_min_el)
         bar2.addSpacing(24)
         self.chk_mon = QCheckBox(tr("Ascolto"))
         self.chk_mon.setToolTip(tr("Riproduce l'audio demodulato per sentire il segnale"))
@@ -317,6 +327,7 @@ class MainWindow(QMainWindow):
         self.chk_bias.setChecked(c.bias_tee)
         self.chk_wav.setChecked(c.record_wav)
         self.chk_auto.setChecked(c.auto_pass)
+        self.auto_min_el.setValue(int(round(c.auto_min_el)))
         self.offset.setValue(int(c.manual_offset_hz))
         self.squelch.setValue(c.squelch_db)
         idx = self.cmb_out.findData(c.monitor_device)
@@ -365,7 +376,10 @@ class MainWindow(QMainWindow):
             for c, v in enumerate(vals):
                 it = QTableWidgetItem(v)
                 it.setTextAlignment(Qt.AlignCenter)
-                if p["max_el"] >= 40:
+                if p["max_el"] < self.cfg.auto_min_el:
+                    it.setForeground(Qt.gray)
+                    it.setToolTip(tr("Sotto la soglia dell'avvio automatico"))
+                elif p["max_el"] >= 40:
                     it.setForeground(Qt.darkGreen)
                 self.tbl.setItem(r, c, it)
 
@@ -433,6 +447,13 @@ class MainWindow(QMainWindow):
             self.cfg.ppm = self.ppm.value()
             self.engine.set_ppm(self.cfg.ppm)
             self._settings_changed()
+
+    def _auto_min_el_changed(self, v):
+        if getattr(self, "_loading", False):
+            return
+        self.cfg.auto_min_el = float(v)
+        self._show_passes(self.passes)
+        self._settings_changed()
 
     def _offset_changed(self, v):
         if getattr(self, "_loading", False):
@@ -572,9 +593,17 @@ class MainWindow(QMainWindow):
         if self.cfg.auto_pass and look:
             el = look[1]
             if el > -1.0 and not self.engine.running:
-                if self._start():
+                p = self._auto_pass_info()
+                max_el = p["max_el"] if p else None
+                if max_el is not None and max_el < self.cfg.auto_min_el:
+                    if self._auto_skipped != p["aos"]:
+                        self._auto_skipped = p["aos"]
+                        self.log_msg(tr("Avvio automatico: passaggio saltato, el. max {e:.0f}° sotto la soglia di {s:.0f}°",
+                                        e=max_el, s=self.cfg.auto_min_el))
+                elif self._start():
                     self.auto_started = True
-                    self.log_msg(tr("Avvio automatico: ISS in arrivo"))
+                    self.log_msg(tr("Avvio automatico: ISS in arrivo (el. max {e})",
+                                    e=f"{max_el:.0f}°" if max_el is not None else "?"))
                 else:
                     self.chk_auto.setChecked(False)
                     self.log_msg(tr("Avvio automatico disattivato: libreria RTL-SDR non utilizzabile"))
@@ -593,6 +622,15 @@ class MainWindow(QMainWindow):
             subprocess.Popen([sys.executable, os.path.join(APP_DIR, "main.py")], cwd=APP_DIR)
             from PySide6.QtWidgets import QApplication
             QApplication.quit()
+
+    def _auto_pass_info(self):
+        """Passaggio in corso o imminente, calcolato una volta e tenuto fino al suo LOS."""
+        now = datetime.now().astimezone()
+        p = self._auto_pass
+        if p is None or p["los"] <= now:
+            p = self.tracker.pass_around(now.timestamp())
+            self._auto_pass = p
+        return p
 
     def closeEvent(self, e):
         self.engine.stop()

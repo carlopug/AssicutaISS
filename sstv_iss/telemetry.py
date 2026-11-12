@@ -64,6 +64,7 @@ def settings_items(cfg):
         ("Bias-T", _onoff(cfg.bias_tee)),
         (tr("Registra WAV"), _onoff(cfg.record_wav)),
         (tr("Avvio automatico ai passaggi"), _onoff(cfg.auto_pass)),
+        (tr("Elevazione minima per l'avvio automatico"), f"{cfg.auto_min_el:g}°"),
         (tr("Ascolto"), mon),
         (tr("De-enfasi"), f"{cfg.deemph_us:g} us"),
         (tr("Offset di sintonia del dongle"), f"{cfg.if_offset_hz / 1000:g} kHz"),
