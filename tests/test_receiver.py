@@ -44,7 +44,7 @@ def test_receiver_doppler_afc(tmp_path):
         shift = IF + doppler(t[0]) + afc                   # il tracker conosce il Doppler, non l'errore
         r = rx.process(iq.astype(np.complex64), shift)
         if r["snr_db"] > 4.0:
-            afc = float(np.clip(afc + AFC_GAIN * r["freq_err"], -5000, 5000))
+            afc = float(np.clip(afc + AFC_GAIN * r["freq_err"], -5000, 5000))  # loop AFC senza gating
         afc_hist.append(afc)
         dec.feed(r["audio"])
     dec.flush()

@@ -3,6 +3,25 @@
 Numerazione MAJOR.MINOR: la minor version si incrementa a ogni modifica al programma.
 Il numero sta in `sstv_iss/__init__.py` (`__version__`) e compare nel titolo della finestra.
 
+## 1.6 - 12/11/2026
+- AFC più robusto (dal passaggio delle 19:19 del 12/11, in cui una portante su un canale vicino aveva portato
+  l'AFC al limite di +5 kHz per quasi tutto il passaggio):
+  - l'AFC si muove solo quando l'audio contiene toni SSTV (quota di energia nella banda 1050-2400 Hz
+    almeno 0,70) o mentre il decoder sta ricevendo un'immagine; voce e portanti non modulate lo ignorano;
+  - escursione massima ridotta a ±1500 Hz e regolabile accanto alla casella AFC (nuovo campo `afc_range_hz`);
+  - senza segnale SSTV l'AFC torna verso zero (costante di tempo circa 20 s);
+  - riga nel registro quando l'AFC supera 1 kHz.
+- Nel CSV della telemetria la nuova colonna `sstv_ratio`.
+- Nuovo test che riproduce l'aggancio dell'AFC a una portante vicina.
+
+## 1.5 - 12/11/2026
+- Icona del programma (`assets/icona.ico`, `assets/icona.png`) sulla finestra e nella barra delle applicazioni
+  di Windows, al posto di quella di Python.
+- Schermata di avvio (`assets/splash.png`) mostrata durante il caricamento, per almeno 2 secondi, con
+  versione e stato del caricamento nella fascia in basso.
+- `AssicutaISS.bat` crea il collegamento `AssicutaISS.lnk` con l'icona, da copiare su desktop o barra.
+- `tools/make_assets.py` rigenera icona e splash (prima versione grafica, sostituibile con immagini proprie).
+
 ## 1.4 - 12/11/2026
 - Una sola soglia di elevazione massima per tabella dei passaggi e avvio automatico (campo «con el. max ≥»
   accanto ad «Avvio automatico ai passaggi»); tolta l'elevazione minima dalla maschera Stazione.

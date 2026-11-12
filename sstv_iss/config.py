@@ -37,7 +37,8 @@ class Config:
     bias_tee: bool = False
     doppler: bool = True
     afc: bool = True
-    afc_limit_hz: float = 5000.0
+    afc_limit_hz: float = 5000.0    # non più usato (fino alla 1.5): sostituito da afc_range_hz
+    afc_range_hz: float = 1500.0    # escursione massima dell'AFC attorno alla frequenza prevista
     manual_offset_hz: float = 0.0
     squelch_db: float = 4.0
     deemph_us: float = 750.0

@@ -59,7 +59,7 @@ def settings_items(cfg):
         ("PPM", str(cfg.ppm)),
         ("Offset", f"{cfg.manual_offset_hz:+.0f} Hz"),
         ("Doppler", _onoff(cfg.doppler)),
-        ("AFC", tr("{s}, limite ±{l:.0f} Hz", s=_onoff(cfg.afc), l=cfg.afc_limit_hz)),
+        ("AFC", tr("{s}, limite ±{l:.0f} Hz", s=_onoff(cfg.afc), l=cfg.afc_range_hz)),
         ("Squelch AFC", f"{cfg.squelch_db:g} dB"),
         ("Bias-T", _onoff(cfg.bias_tee)),
         (tr("Registra WAV"), _onoff(cfg.record_wav)),
@@ -90,7 +90,7 @@ def settings_diff(old, new):
     return [f"{k}: {old.get(k, '?')} → {v}" for k, v in new.items() if old.get(k) != v]
 
 
-CSV_FIELDS = ["utc", "snr_db_mean", "snr_db_max", "signal", "doppler_hz", "afc_hz", "manual_offset_hz",
+CSV_FIELDS = ["utc", "snr_db_mean", "snr_db_max", "signal", "sstv_ratio", "doppler_hz", "afc_hz", "manual_offset_hz",
               "tuned_mhz", "gain", "ppm", "iss_az_deg", "iss_el_deg", "iss_range_km", "decoder", "decoder_line",
               "iq_overflows"]
 

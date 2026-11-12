@@ -17,6 +17,9 @@ from .sdr_source import DongleUnavailable, RtlSource
 from .sstv.robot36 import Robot36Decoder
 
 AFC_GAIN = 0.05             # per blocco da 64 ms -> costante di tempo ~1.3 s
+AFC_LEAK = 0.9968           # senza segnale SSTV l'AFC torna verso 0 (costante di tempo ~20 s)
+SSTV_RATIO_MIN = 0.70       # quota di energia audio nella banda SSTV oltre la quale il segnale è SSTV
+AFC_WARN_HZ = 1000.0        # sopra questo spostamento l'AFC lo segnala nel registro
 DOPPLER_REFRESH_S = 0.5
 # soglia SNR (più bassa dello squelch AFC) sotto la quale il decoder non parte senza VIS:
 # a vuoto l'SNR misurato sta fra -8 e -3 dB
@@ -53,6 +56,9 @@ class Engine:
         self._sec_snr = []
         self._sec_sig = False
         self._last_status = 0.0
+        self._afc_warned = False
+        self.sstv_ratio = 0.0
+        self._sec_ratio = []
         self.spec_freqs = None
 
     # ---------------------------------------------------------- controllo
@@ -230,9 +236,8 @@ class Engine:
             self.snr_db = r["snr_db"]
             self.snr_hist.append((time.time(), self.snr_db))
             self.squelch_open = self.snr_db >= self.cfg.squelch_db
-            if self.cfg.afc and self.squelch_open:
-                lim = self.cfg.afc_limit_hz
-                self.afc_hz = float(np.clip(self.afc_hz + AFC_GAIN * r["freq_err"], -lim, lim))
+            self.update_afc(r["freq_err"], r["sstv_ratio"])
+            self.sstv_ratio = r["sstv_ratio"]
             if r["spectrum_db"] is not None:
                 self.spec_rows.append(r["spectrum_db"])
             with self.lock:
@@ -245,6 +250,27 @@ class Engine:
                     self.wav.writeframes(pcm.tobytes())
                 except Exception:
                     pass
+
+    def update_afc(self, freq_err, sstv_ratio):
+        """Insegue l'errore di frequenza solo su segnali SSTV (o durante un'immagine), entro ±afc_range_hz.
+
+        Senza segnale SSTV l'AFC torna lentamente verso 0: una portante o una voce su un canale vicino
+        non possono più trascinare la sintonia e lasciarla spostata.
+        """
+        if not self.cfg.afc:
+            return
+        decoding = self.decoder.state == "decoding"
+        if self.squelch_open and (sstv_ratio >= SSTV_RATIO_MIN or decoding):
+            lim = self.cfg.afc_range_hz
+            self.afc_hz = float(np.clip(self.afc_hz + AFC_GAIN * freq_err, -lim, lim))
+        else:
+            self.afc_hz *= AFC_LEAK
+        if abs(self.afc_hz) > AFC_WARN_HZ and not self._afc_warned:
+            self._afc_warned = True
+            self.events.put(("log", tr("AFC spostato di {a:+.0f} Hz: verificare PPM o disturbi vicini alla frequenza",
+                                       a=self.afc_hz)))
+        elif abs(self.afc_hz) < AFC_WARN_HZ / 2:
+            self._afc_warned = False
 
     def _telemetry(self, dop):
         """Aggrega l'SNR per secondo: riga nel CSV accanto al WAV e, ogni 30 s, una riga di stato nel registro."""
@@ -266,6 +292,7 @@ class Engine:
                         "utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(self._sec)),
                         "snr_db_mean": f"{snr_mean:.1f}", "snr_db_max": f"{snr_max:.1f}",
                         "signal": int(self._sec_sig), "doppler_hz": f"{dop:.0f}", "afc_hz": f"{afc:.0f}",
+                        "sstv_ratio": f"{max(self._sec_ratio):.2f}" if self._sec_ratio else "",
                         "manual_offset_hz": f"{self.cfg.manual_offset_hz:.0f}",
                         "tuned_mhz": f"{(self.cfg.freq_hz + dop + afc + self.cfg.manual_offset_hz) / 1e6:.6f}",
                         "gain": "auto" if self.cfg.gain_db < 0 else f"{self.cfg.gain_db:g}", "ppm": self.cfg.ppm,
@@ -282,9 +309,11 @@ class Engine:
                 self.events.put(("log", tr("Stato: SNR {m:.1f} dB (max {x:.1f}), Doppler {d:+.0f} Hz, AFC {a:+.0f} Hz{el}",
                                            m=snr_mean, x=snr_max, d=dop, a=afc, el=el)))
             self._sec_snr = []
+            self._sec_ratio = []
             self._sec_sig = False
             self._sec = sec
         self._sec_snr.append(self.snr_db)
+        self._sec_ratio.append(self.sstv_ratio)
         self._sec_sig = self._sec_sig or self.squelch_open
 
     def _dec_event(self, kind, info):

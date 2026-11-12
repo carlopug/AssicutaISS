@@ -1,6 +1,6 @@
 # AssicutaISS
 
-*an ISS SSTV Receiver for Robot36*, version 1.4 · [Leggi in italiano](README.it.md)
+*an ISS SSTV Receiver for Robot36*, version 1.6 · [Leggi in italiano](README.it.md)
 
 A Windows desktop program that receives the **Robot36** SSTV images transmitted by the International Space
 Station during ARISS events (437.550 MHz FM) with an **RTL-SDR** dongle. No SDR#/SDR++ + MMSSTV + virtual
@@ -50,6 +50,13 @@ The interface and the image reports are available in **Italian and English**.
 Close SDR#/SDR++ before receiving: the dongle can be used by only one program at a time.
 If it is busy, AssicutaISS waits until it is free.
 
+## Icon and splash screen
+- `assets/icona.ico` / `assets/icona.png`: program icon (window and Windows taskbar).
+- `assets/splash.png`: splash screen shown while loading (the bottom 40 px band shows version and status).
+- Replace them with your own images (icon 256x256 PNG with transparency, splash about 640x400) or rebuild
+  the default ones with `.venv\Scripts\python.exe tools\make_assets.py`.
+- `AssicutaISS.bat` creates an `AssicutaISS.lnk` shortcut with the icon: copy it to the desktop or pin it.
+
 ## Configuration files
 - `stazione.json`: station data (language, callsign, name, email, ARISS campaign, coordinates, continent,
   receiver, antenna, preamp, cable). Edited from the Station dialog.
@@ -61,8 +68,10 @@ If it is busy, AssicutaISS waits until it is free.
 - The dongle is tuned 250 kHz below the frequency (avoiding the DC spike) and is **never retuned**.
 - The **Doppler** shift (±10 kHz) is computed from the TLE and applied with a phase-continuous software
   oscillator, so there are no frequency jumps.
-- The **AFC** measures the residual error from the received FM signal and corrects it (±5 kHz limit). It is
-  active only when the SNR is above the "Squelch AFC" threshold, and compensates TLE and dongle crystal errors.
+- The **AFC** measures the residual error from the received FM signal and corrects it (±1500 Hz by default,
+  adjustable). It moves only when the SNR is above the "Squelch AFC" threshold **and** the audio contains SSTV
+  tones (or an image is being decoded), so voice or carriers on nearby channels cannot pull the tuning away;
+  without SSTV signal it slowly returns to zero. It compensates TLE and dongle crystal errors.
   If the AFC always settles on a similar value, set the dongle PPM to about AFC / 437.55.
 - A start without VIS requires 8 regular 1200 Hz sync pulses with valid line separators and some signal;
   images with too many lines lacking sync are discarded.

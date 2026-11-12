@@ -206,6 +206,17 @@ EN = {
         "Auto-start: pass skipped, max el. {e:.0f}° below the {s:.0f}° threshold",
     "Avvio automatico: ISS in arrivo (el. max {e})": "Auto-start: ISS approaching (max el. {e})",
 
+    # ---- schermata di avvio
+    "Caricamento delle librerie...": "Loading libraries...",
+    "Preparazione dell'interfaccia...": "Preparing the interface...",
+    "Pronto": "Ready",
+
+    # ---- AFC
+    "AFC spostato di {a:+.0f} Hz: verificare PPM o disturbi vicini alla frequenza":
+        "AFC moved by {a:+.0f} Hz: check the PPM or interference near the frequency",
+    "Escursione massima dell'AFC attorno alla frequenza prevista. Con PPM calibrato bastano 1000-1500 Hz":
+        "Maximum AFC range around the predicted frequency. With a calibrated PPM 1000-1500 Hz is enough",
+
     # ---- scheda .txt
     "(non impostato)": "(not set)",
     "(da compilare)": "(to be filled in)",

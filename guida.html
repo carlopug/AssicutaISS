@@ -153,7 +153,7 @@ footer { color: var(--muted); font-size: var(--step--1); border-top: 1px solid v
   <header class="top">
     <span class="label">Guida rapida · RTL-SDR → Robot36</span>
     <h1>AssicutaISS</h1>
-    <p class="label">an ISS SSTV Receiver for Robot36 · v. 1.4</p>
+    <p class="label">an ISS SSTV Receiver for Robot36 · v. 1.6</p>
     <p class="read">Come ricevere le immagini SSTV della Stazione Spaziale con il dongle RTL-SDR, dall'avvio del programma all'immagine salvata. Il programma segue da solo il Doppler: tu devi solo farlo partire prima del passaggio.</p>
     <div class="freqline">
       <span>Frequenza <b>437,550 MHz FM</b></span>
@@ -168,7 +168,7 @@ footer { color: var(--muted); font-size: var(--step--1); border-top: 1px solid v
     <ol class="steps">
       <li><strong>Chiudi SDR# e SDR++</strong><p>Il dongle può essere usato da un solo programma alla volta. Se resta occupato, il ricevitore aspetta che si liberi.</p></li>
       <li><strong>Collega dongle e antenna 70 cm</strong><p>Verticale o ground-plane va bene per i passaggi alti; una Yagi puntata a mano va meglio. Puoi collegare il dongle anche dopo aver premuto «Avvia».</p></li>
-      <li><strong>Avvia <code>AssicutaISS.bat</code></strong><p>La prima volta compila «Stazione e nominativo…»: scegli la lingua (italiano o inglese) e inserisci nominativo, nome, email, antenna e cavo, che finiscono nella scheda di ogni immagine.</p></li>
+      <li><strong>Avvia <code>AssicutaISS.bat</code></strong><p>Al primo avvio crea anche il collegamento <code>AssicutaISS.lnk</code> con l'icona, da copiare sul desktop. La prima volta compila «Stazione e nominativo…»: scegli la lingua (italiano o inglese) e inserisci nominativo, nome, email, antenna e cavo, che finiscono nella scheda di ogni immagine.</p></li>
       <li><strong>Guarda il prossimo passaggio</strong><p>Nella tabella a sinistra. Premi «Avvia ricezione» 2-3 minuti prima dell'inizio.</p></li>
     </ol>
   </section>
@@ -249,7 +249,8 @@ footer { color: var(--muted); font-size: var(--step--1); border-top: 1px solid v
           <tr><td>Waterfall</td><td>Traccia centrata sulla linea tratteggiata</td><td>Doppler e AFC lavorano. Se la traccia scivola di lato, controlla che «Doppler» sia attivo.</td></tr>
           <tr><td>Decoder</td><td class="num">riga 132/240</td><td>Immagine in corso. Una riga ogni 150 ms.</td></tr>
           <tr><td>Registro</td><td><span class="pill warn">Treno di sync rilevato (VIS perso)</span></td><td>L'inizio della trasmissione era coperto da un fading: l'immagine parte lo stesso, magari spostata di qualche riga.</td></tr>
-          <tr><td>AFC</td><td>Fermo vicino a ±5.000 Hz</td><td>Il dongle è molto starato: imposta PPM ≈ valore AFC ÷ 437,55 e premi «Azzera AFC».</td></tr>
+          <tr><td>AFC</td><td>Resta vicino a zero</td><td>Normale: l'AFC si muove solo quando arrivano toni SSTV e poi torna lentamente a zero. Voci e portanti su canali vicini non lo spostano.</td></tr>
+          <tr><td>Registro</td><td><span class="pill warn">AFC spostato di … Hz</span></td><td>L'AFC ha superato 1 kHz: controlla il PPM (per questo dongle −3) o eventuali disturbi vicini alla frequenza.</td></tr>
         </tbody>
       </table>
     </div>
@@ -305,7 +306,7 @@ footer { color: var(--muted); font-size: var(--step--1); border-top: 1px solid v
     </div>
   </section>
 
-  <footer>AssicutaISS v. 1.4 · ARISS SSTV Series 35, 9-16 novembre · RTL2832U + R820T2</footer>
+  <footer>AssicutaISS v. 1.6 · ARISS SSTV Series 35, 9-16 novembre · RTL2832U + R820T2</footer>
 </div>
 
 <script>

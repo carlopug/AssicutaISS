@@ -114,6 +114,16 @@ class MainWindow(QMainWindow):
         for c in (self.chk_doppler, self.chk_afc, self.chk_bias, self.chk_wav, self.chk_auto):
             c.toggled.connect(self._checks_changed)
             bar2.addWidget(c)
+            if c is self.chk_afc:
+                self.afc_range = QSpinBox()
+                self.afc_range.setRange(200, 5000)
+                self.afc_range.setSingleStep(100)
+                self.afc_range.setPrefix("±")
+                self.afc_range.setSuffix(" Hz")
+                self.afc_range.setToolTip(tr("Escursione massima dell'AFC attorno alla frequenza prevista. "
+                                             "Con PPM calibrato bastano 1000-1500 Hz"))
+                self.afc_range.valueChanged.connect(self._afc_range_changed)
+                bar2.addWidget(self.afc_range)
         bar2.addWidget(QLabel(tr("con el. max ≥")))
         self.auto_min_el = QSpinBox()
         self.auto_min_el.setRange(0, 90)
@@ -329,6 +339,7 @@ class MainWindow(QMainWindow):
         self.chk_bias.setChecked(c.bias_tee)
         self.chk_wav.setChecked(c.record_wav)
         self.chk_auto.setChecked(c.auto_pass)
+        self.afc_range.setValue(int(round(c.afc_range_hz)))
         self.auto_min_el.setValue(int(round(c.auto_min_el)))
         self.offset.setValue(int(c.manual_offset_hz))
         self.squelch.setValue(c.squelch_db)
@@ -450,6 +461,12 @@ class MainWindow(QMainWindow):
             self.cfg.ppm = self.ppm.value()
             self.engine.set_ppm(self.cfg.ppm)
             self._settings_changed()
+
+    def _afc_range_changed(self, v):
+        if getattr(self, "_loading", False):
+            return
+        self.cfg.afc_range_hz = float(v)
+        self._settings_changed()
 
     def _auto_min_el_changed(self, v):
         if getattr(self, "_loading", False):

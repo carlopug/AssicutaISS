@@ -22,6 +22,9 @@ data/
 .claude-data/
 .claude/
 
+# --- Collegamento creato da AssicutaISS.bat (contiene percorsi locali) ---
+*.lnk
+
 # --- Sistema operativo / editor ---
 Thumbs.db
 desktop.ini

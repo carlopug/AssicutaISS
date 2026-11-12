@@ -80,11 +80,28 @@ class Receiver:
         self.prev = bb[-1]
         disc = np.angle(bb * np.conj(prev)) * (FS_AUDIO / (2 * np.pi))   # Hz
         freq_err = float(np.mean(disc))
+        sstv_ratio = self._sstv_ratio(disc - freq_err)
 
         a, self.de_zi = lfilter(self.de_b, self.de_a, disc, zi=self.de_zi)
         a, self.bp_zi = sosfilt(self.bp, a, zi=self.bp_zi)
         audio = (a / 5000.0).astype(np.float32)
-        return {"audio": audio, "freq_err": freq_err, "snr_db": snr, "spectrum_db": spec}
+        return {"audio": audio, "freq_err": freq_err, "snr_db": snr, "spectrum_db": spec, "sstv_ratio": sstv_ratio}
+
+    def _sstv_ratio(self, d):
+        """Quota dell'energia audio (300-3000 Hz) che cade nella banda dei toni SSTV (1050-2400 Hz).
+
+        Calcolata sull'uscita del discriminatore prima della de-enfasi: alta per un segnale SSTV,
+        bassa per voce, portanti non modulate e rumore.
+        """
+        P = np.abs(np.fft.rfft(d * self._win_audio(len(d)))) ** 2
+        f = np.fft.rfftfreq(len(d), 1 / FS_AUDIO)
+        tot = P[(f >= 300) & (f <= 3000)].sum() + 1e-12
+        return float(P[(f >= 1050) & (f <= 2400)].sum() / tot)
+
+    def _win_audio(self, n):
+        if getattr(self, "_wa", None) is None or len(self._wa) != n:
+            self._wa = np.hanning(n)
+        return self._wa
 
     def _spectrum(self, mid):
         k = len(mid) // FFT_N
