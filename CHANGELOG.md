@@ -3,6 +3,35 @@
 Numerazione MAJOR.MINOR: la minor version si incrementa a ogni modifica al programma.
 Il numero sta in `sstv_iss/__init__.py` (`__version__`) e compare nel titolo della finestra.
 
+## 1.9 - 13/11/2026
+- Finestra adatta agli schermi scalati (monitor 1920x1080 al 125%: solo 1536x824 punti utili, la finestra
+  da 1400x860 e la colonna sinistra venivano tagliate in basso):
+  - al primo avvio la finestra si adatta allo schermo principale e, se è piccolo o scalato, si apre a tutto schermo;
+  - posizione, dimensioni, monitor e divisori vengono ricordati alla chiusura (`config.json`);
+  - colonna sinistra più compatta («Azzera AFC» accanto al valore dell'AFC, spaziature ridotte, mappa alta
+    almeno 130 punti) e scorrevole se lo spazio non basta;
+  - registro e tabella dei passaggi occupano circa un quarto dell'altezza.
+
+## 1.8 - 13/11/2026
+- Orizzonte radio unico per tabella dei passaggi, avvio/arresto automatici e scheda ARISS (dal passaggio
+  radente del 13/11 alle 14:22 UTC: elevazione massima -0,1°, assente dalla tabella che usava 0°, ma avviato
+  dalla soglia di -1° dell'avvio automatico con «el. max ?»; ha dato comunque un'immagine di 196 righe):
+  - l'orizzonte si calcola dalla quota della stazione, acos(R / (R + h)): -0,8° a 586 m;
+  - nel dialogo Stazione, scheda Posizione, si può impostare a mano (montagne o palazzi): campo
+    `horizon_deg` in `stazione.json`, `null` = automatico;
+  - la ricezione parte quando l'ISS supera l'orizzonte e si ferma 1° sotto;
+  - i passaggi radenti compaiono in tabella con la loro elevazione massima, anche negativa; la soglia
+    «con el. max ≥» scende fino a -5°;
+  - elevazioni sotto 10° mostrate con un decimale.
+- TLE aggiornato in automatico: a programma aperto, ogni 10 minuti si controlla l'età della copia locale e
+  oltre le 24 ore si riscarica (mai durante una ricezione; dopo un download fallito si riprova dopo un'ora).
+- Mappa della posizione dell'ISS in tempo reale (riquadro «Posizione ISS»): planisfero Natural Earth 1:110m
+  (dominio pubblico, `assets/world_land.json`), zona notte, traccia a terra passata e futura, cerchio di
+  visibilità calcolato con l'orizzonte radio (verde quando l'ISS è sopra l'orizzonte), stazione; clic per
+  aprire isstracker.pl nel browser. Usa gli stessi TLE del Doppler, senza connessione.
+- Nuova disposizione: la mappa prende il posto della tabella dei passaggi nella colonna sinistra; la tabella
+  va in basso accanto al registro, con divisori trascinabili.
+
 ## 1.7 - 13/11/2026
 - Decoder più tollerante sui segnali deboli (dai passaggi della notte del 12-13/11, in cui tre trasmissioni
   vere erano state scartate come «falso avvio» dopo 83, 97 e 153 righe):

@@ -83,7 +83,7 @@ header.top h1 { font-size: var(--step-3); font-weight: 700; letter-spacing: 0.01
 .mock-scroll { overflow-x: auto; }
 .mock { min-width: 720px; background: var(--mock-bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px; display: grid; gap: 8px;
   grid-template-columns: 1fr 1.9fr 1.35fr; grid-template-rows: auto auto 1fr auto;
-  grid-template-areas: "bar bar bar" "chk chk chk" "left wf right" "log log log"; font-size: 0.8rem; }
+  grid-template-areas: "bar bar bar" "chk chk chk" "left wf right" "log log pass"; font-size: 0.8rem; }
 .z { position: relative; background: var(--mock-panel); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; color: var(--muted); }
 .z .tag { position: absolute; top: -9px; left: -9px; width: 24px; height: 24px; border-radius: 50%; background: var(--accent); color: #fff;
   font-family: var(--font-display); font-weight: 700; font-size: 0.85rem; display: grid; place-items: center; box-shadow: 0 0 0 3px var(--mock-bg); }
@@ -99,6 +99,9 @@ header.top h1 { font-size: var(--step-3); font-weight: 700; letter-spacing: 0.01
 .right .z:first-child { flex: 1.3; }
 .right .z:last-child { flex: 1; }
 .log { grid-area: log; font-family: var(--font-mono); font-size: 0.72rem; }
+.pass { grid-area: pass; }
+.map { margin-top: 6px; aspect-ratio: 2.4/1; border-radius: 4px; background: #16324a; position: relative; overflow: hidden; }
+.map svg { width: 100%; height: 100%; display: block; }
 .mini { display: flex; justify-content: space-between; gap: 8px; font-family: var(--font-mono); font-size: 0.72rem; }
 .mini b { color: var(--ink); font-weight: 500; }
 .sstv { margin-top: 6px; aspect-ratio: 4/3; border-radius: 4px; background:
@@ -153,7 +156,7 @@ footer { color: var(--muted); font-size: var(--step--1); border-top: 1px solid v
   <header class="top">
     <span class="label">Guida rapida · RTL-SDR → Robot36</span>
     <h1>AssicutaISS</h1>
-    <p class="label">an ISS SSTV Receiver for Robot36 · v. 1.7</p>
+    <p class="label">an ISS SSTV Receiver for Robot36 · v. 1.9</p>
     <p class="read">Come ricevere le immagini SSTV della Stazione Spaziale con il dongle RTL-SDR, dall'avvio del programma all'immagine salvata. Il programma segue da solo il Doppler: tu devi solo farlo partire prima del passaggio.</p>
     <div class="freqline">
       <span>Frequenza <b>437,550 MHz FM</b></span>
@@ -169,7 +172,7 @@ footer { color: var(--muted); font-size: var(--step--1); border-top: 1px solid v
       <li><strong>Chiudi SDR# e SDR++</strong><p>Il dongle può essere usato da un solo programma alla volta. Se resta occupato, il ricevitore aspetta che si liberi.</p></li>
       <li><strong>Collega dongle e antenna 70 cm</strong><p>Verticale o ground-plane va bene per i passaggi alti; una Yagi puntata a mano va meglio. Puoi collegare il dongle anche dopo aver premuto «Avvia».</p></li>
       <li><strong>Avvia <code>AssicutaISS.bat</code></strong><p>Al primo avvio crea anche il collegamento <code>AssicutaISS.lnk</code> con l'icona, da copiare sul desktop. La prima volta compila «Stazione e nominativo…»: scegli la lingua (italiano o inglese) e inserisci nominativo, nome, email, antenna e cavo, che finiscono nella scheda di ogni immagine.</p></li>
-      <li><strong>Guarda il prossimo passaggio</strong><p>Nella tabella a sinistra. Premi «Avvia ricezione» 2-3 minuti prima dell'inizio.</p></li>
+      <li><strong>Guarda il prossimo passaggio</strong><p>Nella tabella in basso a destra. Premi «Avvia ricezione» 2-3 minuti prima dell'inizio, oppure attiva «Avvio automatico ai passaggi».</p></li>
     </ol>
   </section>
 
@@ -199,10 +202,18 @@ footer { color: var(--muted); font-size: var(--step--1); border-top: 1px solid v
             <div class="mini"><span>Stato</span><b>riga 132/240</b></div>
           </div>
           <div class="z"><span class="tag">E</span>
-            <div class="label">ISS e passaggi</div>
+            <div class="label">ISS</div>
             <div class="mini"><span>Az 212° El +41°</span></div>
-            <div class="mini"><span>01:02</span><b>63°</b></div>
-            <div class="mini"><span>17:43</span><b>61°</b></div>
+            <div class="mini"><span>Prossimo tra</span><b>1h 06m</b></div>
+          </div>
+          <div class="z"><span class="tag">J</span>
+            <div class="label">Posizione ISS</div>
+            <div class="map"><svg viewBox="0 0 240 100" preserveAspectRatio="none" aria-hidden="true">
+              <path d="M0 78 C40 98 70 98 100 62 S160 8 200 12 S235 40 240 46" fill="none" stroke="#ffcc33" stroke-width="1.6"/>
+              <circle cx="150" cy="24" r="17" fill="none" stroke="#56e07a" stroke-width="1.2"/>
+              <circle cx="150" cy="24" r="3.5" fill="#ff4b3e" stroke="#fff" stroke-width="1"/>
+              <path d="M131 31 l3 -5 l3 5 z" fill="#4fd1ff"/>
+            </svg></div>
           </div>
         </div>
         <div class="z wf"><span class="tag">F</span><canvas id="wf" width="520" height="320" aria-hidden="true"></canvas></div>
@@ -211,18 +222,25 @@ footer { color: var(--muted); font-size: var(--step--1); border-top: 1px solid v
           <div class="z"><span class="tag">H</span><div class="label">Immagini ricevute</div><div class="thumbs"><span></span><span></span><span></span></div></div>
         </div>
         <div class="z log"><span class="tag">I</span>01:03:12  VIS Robot36 rilevato: inizio immagine · 01:03:48  Immagine salvata: 20261112_000312Z.png [240 righe, slant +38 ppm] · Scheda ARISS: 20261112_000312Z.txt</div>
+        <div class="z pass"><span class="tag">K</span>
+          <div class="label">Prossimi passaggi</div>
+          <div class="mini"><span>ven 13/11 16:53</span><b>32°</b></div>
+          <div class="mini"><span>ven 13/11 18:30</span><b>26°</b></div>
+        </div>
       </div>
     </div>
     <dl class="legend">
       <div><dt>A</dt><dd><b>Comandi.</b> Avvio/arresto, frequenza (lascia 437,550), guadagno, correzione PPM del dongle, offset manuale, soglia che attiva l'AFC.</dd></div>
-      <div><dt>B</dt><dd><b>Opzioni e ascolto.</b> Lascia sempre attivi Doppler e AFC. «Avvio automatico» accende e spegne il ricevitore a ogni passaggio. Il valore «con el. max ≥» è l'unica soglia: la tabella mostra e l'avvio automatico riceve solo i passaggi che salgono almeno fin lì (0° = tutti). «Ascolto» fa sentire il segnale sull'uscita scelta, comprese cuffie o cavo virtuale verso MMSSTV. Parti con il volume basso: senza segnale il fruscio è forte.</dd></div>
+      <div><dt>B</dt><dd><b>Opzioni e ascolto.</b> Lascia sempre attivi Doppler e AFC. «Avvio automatico» accende e spegne il ricevitore a ogni passaggio. Il valore «con el. max ≥» è l'unica soglia: la tabella mostra e l'avvio automatico riceve solo i passaggi che salgono almeno fin lì. Può scendere sotto zero: −1° prende anche i passaggi radenti, che da una stazione in quota sopra il mare danno a volte immagini. «Ascolto» fa sentire il segnale sull'uscita scelta, comprese cuffie o cavo virtuale verso MMSSTV. Parti con il volume basso: senza segnale il fruscio è forte.</dd></div>
       <div><dt>C</dt><dd><b>Frequenze.</b> Correzione Doppler calcolata dall'orbita, correzione AFC misurata sul segnale e frequenza su cui si sta ascoltando.</dd></div>
       <div><dt>D</dt><dd><b>Segnale.</b> Barra SNR e stato del decoder: «In attesa» oppure la riga in decodifica su 240. In arancione compare «In attesa del dongle…» se il dongle manca o è occupato.</dd></div>
-      <div><dt>E</dt><dd><b>ISS.</b> Posizione attuale, conto alla rovescia e passaggi delle prossime 48 ore. In verde quelli oltre 40°.</dd></div>
+      <div><dt>E</dt><dd><b>ISS.</b> Azimut, elevazione e distanza attuali, conto alla rovescia al prossimo passaggio, «Stazione e nominativo…» e «Aggiorna TLE». Il TLE si aggiorna anche da solo una volta al giorno se il programma resta aperto (mai durante una ricezione).</dd></div>
+      <div><dt>J</dt><dd><b>Mappa.</b> Posizione dell'ISS calcolata dallo stesso TLE del Doppler: traccia passata tratteggiata e futura in giallo, zona notte, la tua stazione (triangolo azzurro). Il cerchio è la zona da cui l'ISS è sopra il tuo orizzonte radio: diventa verde quando ti copre. Un clic apre isstracker.pl nel browser.</dd></div>
       <div><dt>F</dt><dd><b>Waterfall.</b> ±25 kHz attorno alla frequenza corretta. Il segnale dell'ISS deve stare nella banda gialla, sulla linea tratteggiata.</dd></div>
       <div><dt>G</dt><dd><b>Immagine live.</b> Si compone riga per riga mentre arriva (circa 36 secondi).</dd></div>
       <div><dt>H</dt><dd><b>Galleria.</b> Le immagini salvate; doppio clic per aprirle. Sotto c'è anche «Decodifica file WAV…».</dd></div>
       <div><dt>I</dt><dd><b>Registro.</b> Inizio immagine, salvataggi, errori del dongle.</dd></div>
+      <div><dt>K</dt><dd><b>Prossimi passaggi.</b> Le prossime 48 ore sopra la soglia, con l'orizzonte radio nel titolo. In verde quelli oltre 40°. Il divisore fra registro e tabella si trascina.</dd></div>
     </dl>
   </section>
 
@@ -300,13 +318,13 @@ footer { color: var(--muted); font-size: var(--step--1); border-top: 1px solid v
           <tr><td>Waterfall tutto acceso, righe orizzontali</td><td>Guadagno troppo alto: passa da Auto a 30-40 dB.</td></tr>
           <tr><td>Nessuna traccia anche a passaggio in corso</td><td>Controlla antenna e cavo; i passaggi sotto 20° sono spesso troppo deboli.</td></tr>
           <tr><td>Immagine rumorosa o a strisce</td><td>Segnale debole: punta meglio l'antenna o aspetta un passaggio più alto.</td></tr>
-          <tr><td>Passaggi mancanti o sbagliati</td><td>Premi «Aggiorna TLE» (serve Internet).</td></tr>
+          <tr><td>Passaggi mancanti o sbagliati</td><td>Premi «Aggiorna TLE» (serve Internet). Se montagne o palazzi coprono il cielo basso, in «Stazione e nominativo…» › Posizione togli «automatico dalla quota» e alza l'orizzonte radio.</td></tr>
         </tbody>
       </table>
     </div>
   </section>
 
-  <footer>AssicutaISS v. 1.7 · ARISS SSTV Series 35, 9-16 novembre · RTL2832U + R820T2</footer>
+  <footer>AssicutaISS v. 1.9 · ARISS SSTV Series 35, 9-16 novembre · RTL2832U + R820T2</footer>
 </div>
 
 <script>

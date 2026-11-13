@@ -71,6 +71,8 @@ def settings_items(cfg):
         (tr("Nominativo"), cfg.callsign or "SWL"),
         ("Locator", maidenhead(cfg.lat, cfg.lon) if cfg.station_set else tr("(non impostato)")),
         (tr("Altitudine s.l.m."), f"{cfg.alt_m:.0f} m"),
+        (tr("Orizzonte radio"), tr("{h} (automatico dalla quota)", h=f"{cfg.horizon:.1f}°") if cfg.horizon_deg is None
+         else tr("{h} (impostato a mano)", h=f"{cfg.horizon:.1f}°")),
         ("Antenna", f"{cfg.antenna or 'n/a'} ({cfg.antenna_gain_dbi:g} dBi)"),
         (tr("Preamplificatore"), preamp),
         (tr("Cavo"), tr("{c} (perdita {l:g} dB)", c=cfg.cable or "n/a", l=cfg.cable_loss_db)),

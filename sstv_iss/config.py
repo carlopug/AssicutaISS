@@ -18,6 +18,7 @@ class Config:
     lat: float = 0.0
     lon: float = 0.0
     alt_m: float = 0.0
+    horizon_deg: float | None = None  # orizzonte radio in gradi; None = calcolato dalla quota
     continent: str = "Europe"
     campaign: str = "Expedition 75 - ARISS Series 35 Space Memories"
     receiver: str = "RTL-SDR (RTL2832U + R820T2)"
@@ -51,6 +52,17 @@ class Config:
     auto_min_el: float = 10.0       # soglia unica: tabella e avvio automatico solo per passaggi con el. max >= questa
     images_dir: str = os.path.join(APP_DIR, "images")
     if_offset_hz: int = 250_000
+    # ---- finestra (config.json): stato salvato da Qt in esadecimale, "" = adattata allo schermo
+    window_geometry: str = ""
+    window_splitters: str = ""      # tre stati separati da ";": colonne, alto/basso, registro/passaggi
+
+    @property
+    def horizon(self):
+        """Orizzonte unico per tabella dei passaggi e avvio automatico."""
+        if self.horizon_deg is not None:
+            return float(self.horizon_deg)
+        from .doppler import radio_horizon
+        return radio_horizon(self.alt_m)
 
     @property
     def station_set(self):
@@ -92,6 +104,6 @@ class Config:
 
 
 STATION_PATH = os.path.join(APP_DIR, "stazione.json")
-STATION_KEYS = ("language", "callsign", "operator_name", "email", "category", "lat", "lon", "alt_m", "continent",
+STATION_KEYS = ("language", "callsign", "operator_name", "email", "category", "lat", "lon", "alt_m", "horizon_deg", "continent",
                 "campaign", "receiver", "rx_sensitivity", "rx_nf_db", "antenna", "antenna_gain_dbi", "preamp",
                 "preamp_gain_db", "cable", "cable_loss_db", "station_notes")

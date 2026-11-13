@@ -6,10 +6,11 @@ import numpy as np
 import pyqtgraph as pg
 from PySide6.QtCore import QSize, Qt
 from PySide6.QtGui import QIcon, QImage, QPixmap
-from PySide6.QtWidgets import (QComboBox, QDialog, QDialogButtonBox, QDoubleSpinBox, QFormLayout, QLabel,
-                               QLineEdit, QListWidget, QListWidgetItem, QTabWidget, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDialogButtonBox, QDoubleSpinBox, QFormLayout,
+                               QHBoxLayout, QLabel, QLineEdit, QListWidget, QListWidgetItem, QTabWidget, QVBoxLayout, QWidget)
 
 from ..i18n import LANGUAGES, tr
+from ..doppler import fmt_el, radio_horizon
 from ..report import maidenhead
 
 pg.setConfigOptions(antialias=False, imageAxisOrder="row-major")
@@ -171,12 +172,30 @@ class StationDialog(QDialog):
         self.continent.setCurrentText(cfg.continent if cfg.continent in CONTINENTS else "Europe")
         for s in (self.lat, self.lon):
             s.valueChanged.connect(self._update_grid)
+        self.hz_auto = QCheckBox()
+        self.hz_auto.setChecked(cfg.horizon_deg is None)
+        self.hz = self._spin(-5, 10, cfg.horizon, 1, "°")
+        self.hz.setSingleStep(0.1)
+        hz_tip = tr("Elevazione sotto la quale l'ISS è considerata tramontata: vale per la tabella dei passaggi, "
+                    "l'avvio e l'arresto automatici. In automatico è l'abbassamento dell'orizzonte dovuto alla quota "
+                    "(586 m: -0,8°). Inserisci un valore a mano se montagne o palazzi coprono il cielo basso.")
+        hz_row = QWidget()
+        hl = QHBoxLayout(hz_row)
+        hl.setContentsMargins(0, 0, 0, 0)
+        hl.addWidget(self.hz)
+        hl.addWidget(self.hz_auto, 1)
+        for w in (self.hz, self.hz_auto, hz_row):
+            w.setToolTip(hz_tip)
+        self.hz_auto.toggled.connect(self._update_horizon)
+        self.alt.valueChanged.connect(self._update_horizon)
         f2.addRow(tr("Latitudine (N +)"), self.lat)
         f2.addRow(tr("Longitudine (E +)"), self.lon)
         f2.addRow(tr("Altitudine s.l.m."), self.alt)
         f2.addRow(tr("Locator (calcolato)"), self.grid)
+        f2.addRow(tr("Orizzonte radio"), hz_row)
         f2.addRow(tr("Continente"), self.continent)
         self._update_grid()
+        self._update_horizon()
 
         # --- attrezzatura
         f3 = self._tab(tabs, tr("Attrezzatura"), tr("Dati richiesti da ARISS per caratterizzare il segnale SSTV."))
@@ -239,6 +258,13 @@ class StationDialog(QDialog):
     def _update_grid(self):
         self.grid.setText(maidenhead(self.lat.value(), self.lon.value()))
 
+    def _update_horizon(self):
+        auto = radio_horizon(self.alt.value())
+        self.hz_auto.setText(tr("automatico dalla quota ({h})", h=fmt_el(auto)))
+        self.hz.setEnabled(not self.hz_auto.isChecked())
+        if self.hz_auto.isChecked():
+            self.hz.setValue(auto)
+
     def apply(self, cfg):
         cfg.language = self.language.currentData() or "it"
         cfg.callsign = self.callsign.text().strip().upper()
@@ -248,6 +274,7 @@ class StationDialog(QDialog):
         cfg.campaign = self.campaign.currentText().strip()
         cfg.lat, cfg.lon = self.lat.value(), self.lon.value()
         cfg.alt_m = self.alt.value()
+        cfg.horizon_deg = None if self.hz_auto.isChecked() else round(self.hz.value(), 1)
         cfg.continent = self.continent.currentText()
         cfg.receiver = self.receiver.text().strip()
         cfg.rx_sensitivity = self.sens.text().strip()

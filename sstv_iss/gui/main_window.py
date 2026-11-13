@@ -3,29 +3,35 @@ import os
 import queue
 import re
 import threading
+import time
 from datetime import datetime
 
-from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QFont
-from PySide6.QtWidgets import (QCheckBox, QComboBox, QDoubleSpinBox, QFileDialog, QGridLayout, QGroupBox,
+from PySide6.QtCore import QByteArray, Qt, QTimer
+from PySide6.QtGui import QFont, QGuiApplication
+from PySide6.QtWidgets import (QCheckBox, QComboBox, QDoubleSpinBox, QFileDialog, QFrame, QGridLayout, QGroupBox,
                                QHBoxLayout, QHeaderView, QLabel, QMainWindow, QMessageBox, QPlainTextEdit,
-                               QProgressBar, QPushButton, QSlider, QSpinBox, QSplitter, QTableWidget,
+                               QProgressBar, QPushButton, QScrollArea, QSlider, QSpinBox, QSplitter, QTableWidget,
                                QTableWidgetItem, QVBoxLayout, QWidget)
 
 from .. import WINDOW_TITLE, __version__, audio_out
 from ..config import APP_DIR
 from ..i18n import tr, weekday
-from ..doppler import IssTracker
+from ..doppler import TLE_MAX_AGE_S, IssTracker, fmt_el
 from ..engine import Engine
 from ..sdr_source import R820T_GAINS
 from ..report import maidenhead, write_report
 from ..telemetry import SessionLog, settings_diff, settings_items, settings_text
 from ..sstv.robot36 import decode_audio_file
+from .iss_map import IssMap
 from .widgets import Gallery, LiveImage, StationDialog, WaterfallWidget
 
 
 def fmt_hz(v):
     return f"{v:+,.0f} Hz".replace(",", ".")
+
+
+TLE_CHECK_MS = 10 * 60 * 1000     # controllo dell'età del TLE ogni 10 minuti
+TLE_RETRY_S = 3600               # dopo un download fallito si riprova dopo un'ora
 
 
 class MainWindow(QMainWindow):
@@ -49,8 +55,8 @@ class MainWindow(QMainWindow):
         self._diff_timer.setSingleShot(True)
         self._diff_timer.timeout.connect(self._log_settings_diff)
         self.setWindowTitle(WINDOW_TITLE)
-        self.resize(1400, 820)
         self._build()
+        self._restore_geometry()
         self._load_settings_into_ui()
 
         self.timer = QTimer(self)
@@ -59,9 +65,14 @@ class MainWindow(QMainWindow):
         self.slow = QTimer(self)
         self.slow.timeout.connect(self._slow_tick)
         self.slow.start(1000)
+        # TLE: a programma aperto si riscarica quando la copia locale supera le 24 ore (mai durante una ricezione)
+        self._tle_try = time.time()
+        self.tle_timer = QTimer(self)
+        self.tle_timer.timeout.connect(self._tle_auto)
+        self.tle_timer.start(TLE_CHECK_MS)
 
         if cfg.station_set:
-            self.tracker.set_station(cfg.lat, cfg.lon, cfg.alt_m)
+            self.tracker.set_station(cfg.lat, cfg.lon, cfg.alt_m, cfg.horizon)
         self.log_msg(tr("{app} avviato. Registro: {p}", app=WINDOW_TITLE, p=self.session_log.path or "-")
                      + "\n" + tr("Impostazioni:") + "\n" + settings_text(cfg))
         self._settings = dict(settings_items(cfg))
@@ -126,7 +137,7 @@ class MainWindow(QMainWindow):
                 bar2.addWidget(self.afc_range)
         bar2.addWidget(QLabel(tr("con el. max ≥")))
         self.auto_min_el = QSpinBox()
-        self.auto_min_el.setRange(0, 90)
+        self.auto_min_el.setRange(-5, 90)
         self.auto_min_el.setSuffix("°")
         self.auto_min_el.setToolTip(tr("Soglia unica: la tabella mostra e l'avvio automatico riceve solo "
                                        "i passaggi con elevazione massima almeno pari a questo valore"))
@@ -186,6 +197,8 @@ class MainWindow(QMainWindow):
         # pannello sinistro
         left = QWidget()
         ll = QVBoxLayout(left)
+        ll.setContentsMargins(0, 0, 4, 0)
+        ll.setSpacing(4)
         g_freq = QGroupBox(tr("Frequenze"))
         gf = QGridLayout(g_freq)
         big = QFont()
@@ -202,7 +215,8 @@ class MainWindow(QMainWindow):
             gf.addWidget(w, i, 1)
         btn_afc = QPushButton(tr("Azzera AFC"))
         btn_afc.clicked.connect(self.engine.reset_afc)
-        gf.addWidget(btn_afc, 4, 0, 1, 2)
+        gf.addWidget(btn_afc, 2, 2)          # accanto al valore AFC: una riga in meno
+        gf.setVerticalSpacing(2)
         ll.addWidget(g_freq)
 
         g_sig = QGroupBox(tr("Segnale"))
@@ -246,12 +260,26 @@ class MainWindow(QMainWindow):
         self.tbl = QTableWidget(0, 4)
         self.tbl.setHorizontalHeaderLabels([tr("Giorno"), tr("Inizio"), tr("Fine"), tr("El. max")])
         self.tbl.verticalHeader().setVisible(False)
+        self.tbl.verticalHeader().setDefaultSectionSize(self.tbl.fontMetrics().height() + 6)
         self.tbl.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.tbl.setEditTriggers(QTableWidget.NoEditTriggers)
         gp.addWidget(self.tbl)
-        ll.addWidget(g_pass, 1)
-        left.setMinimumWidth(300)
-        split.addWidget(left)
+        g_map = QGroupBox(tr("Posizione ISS"))
+        gm = QVBoxLayout(g_map)
+        gm.setContentsMargins(4, 4, 4, 4)
+        self.map = IssMap(self.tracker, lambda: self.cfg.horizon,
+                          lambda: (self.cfg.lat, self.cfg.lon) if self.cfg.station_set else None)
+        gm.addWidget(self.map)
+        ll.addWidget(g_map, 1)
+        left.setMinimumWidth(370)
+        # su schermi bassi (es. 1080p al 125%) la colonna scorre invece di essere tagliata
+        left_scroll = QScrollArea()
+        left_scroll.setWidget(left)
+        left_scroll.setWidgetResizable(True)
+        left_scroll.setFrameShape(QFrame.NoFrame)
+        left_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        left_scroll.setMinimumWidth(left.minimumWidth() + left_scroll.verticalScrollBar().sizeHint().width())
+        split.addWidget(left_scroll)
 
         # centro: waterfall
         self.wf = WaterfallWidget()
@@ -276,14 +304,45 @@ class MainWindow(QMainWindow):
         rl.addWidget(self.gallery, 2)
         right.setMinimumWidth(360)
         split.addWidget(right)
-        split.setSizes([320, 640, 440])
-        root.addWidget(split, 1)
+        split.setSizes([380, 600, 420])
 
+        # in basso: registro e prossimi passaggi, separati da un divisore trascinabile
         self.log = QPlainTextEdit()
         self.log.setReadOnly(True)
-        self.log.setMaximumHeight(110)
-        root.addWidget(self.log)
+        bottom = QSplitter(Qt.Horizontal)
+        self.split_bottom = bottom
+        bottom.addWidget(self.log)
+        bottom.addWidget(g_pass)
+        bottom.setSizes([860, 540])
+        vsplit = QSplitter(Qt.Vertical)
+        self.split_main, self.split_v = split, vsplit
+        vsplit.addWidget(split)
+        vsplit.addWidget(bottom)
+        vsplit.setStretchFactor(0, 1)
+        root.addWidget(vsplit, 1)
         self.setCentralWidget(central)
+
+    def _restore_geometry(self):
+        """Posizione e dimensioni dell'ultima chiusura; la prima volta la finestra si adatta allo schermo principale."""
+        g = self.cfg.window_geometry
+        if not (g and self.restoreGeometry(QByteArray.fromHex(g.encode()))):
+            scr = QGuiApplication.primaryScreen().availableGeometry()
+            w, h = min(1400, scr.width() - 40), min(860, scr.height() - 40)
+            self.resize(w, h)
+            self.move(scr.x() + (scr.width() - w) // 2, scr.y() + (scr.height() - h) // 2)
+            if scr.height() < 900 or scr.width() < 1440:      # schermo piccolo o scalato: meglio a tutto schermo
+                self.setWindowState(Qt.WindowMaximized)
+        states = self.cfg.window_splitters.split(";") if self.cfg.window_splitters else []
+        sp = (self.split_main, self.split_v, self.split_bottom)
+        if len(states) == 3 and all(s.restoreState(QByteArray.fromHex(st.encode())) for s, st in zip(sp, states)):
+            return
+        h = self.height()
+        self.split_v.setSizes([int(h * 0.76), int(h * 0.24)])   # registro e passaggi: circa un quarto dell'altezza
+
+    def _save_geometry(self):
+        self.cfg.window_geometry = bytes(self.saveGeometry().toHex()).decode()
+        self.cfg.window_splitters = ";".join(bytes(s.saveState().toHex()).decode()
+                                             for s in (self.split_main, self.split_v, self.split_bottom))
 
     def _load_settings_into_ui(self):
         self._loading = True
@@ -374,11 +433,11 @@ class MainWindow(QMainWindow):
 
     def _load_tle_and_passes(self, force=False):
         msg = self.tracker.load_tle(force)
-        self.ui_q.put(lambda: (self.lbl_tle.setText(msg), self.log_msg(msg)))
+        self.ui_q.put(lambda: (self.lbl_tle.setText(msg), self.log_msg(msg), self.map.reset_track()))
         self._compute_passes()
 
     def _compute_passes(self):
-        p = self.tracker.passes(48, 0.0)
+        p = self.tracker.passes(48)
         self.ui_q.put(lambda: self._show_passes(p))
 
     def _show_passes(self, all_passes):
@@ -386,10 +445,11 @@ class MainWindow(QMainWindow):
         self.all_passes = [p for p in all_passes if p["los"] > now]
         passes = [p for p in self.all_passes if p["max_el"] >= self.cfg.auto_min_el]
         self.passes = passes
-        self.g_pass.setTitle(tr("Prossimi passaggi (48 h, el. max ≥ {e:.0f}°)", e=self.cfg.auto_min_el))
+        self.g_pass.setTitle(tr("Prossimi passaggi (48 h, el. max ≥ {e:.0f}°, orizzonte {h})",
+                                e=self.cfg.auto_min_el, h=fmt_el(self.cfg.horizon)))
         self.tbl.setRowCount(len(passes))
         for r, p in enumerate(passes):
-            vals = [f"{weekday(p['aos'])} {p['aos']:%d/%m}", f"{p['aos']:%H:%M:%S}", f"{p['los']:%H:%M:%S}", f"{p['max_el']:.0f}°"]
+            vals = [f"{weekday(p['aos'])} {p['aos']:%d/%m}", f"{p['aos']:%H:%M:%S}", f"{p['los']:%H:%M:%S}", fmt_el(p["max_el"])]
             for c, v in enumerate(vals):
                 it = QTableWidgetItem(v)
                 it.setTextAlignment(Qt.AlignCenter)
@@ -402,7 +462,8 @@ class MainWindow(QMainWindow):
         if d.exec():
             d.apply(self.cfg)
             self.cfg.save_station()
-            self.tracker.set_station(self.cfg.lat, self.cfg.lon, self.cfg.alt_m)
+            self.tracker.set_station(self.cfg.lat, self.cfg.lon, self.cfg.alt_m, self.cfg.horizon)
+            self.map.reset_track()
             c = self.cfg
             self._log_settings_diff()
             self.log_msg(tr("Stazione {call}: {lat:.4f}, {lon:.4f}, {alt:.0f} m, locator {grid} - salvata in stazione.json",
@@ -586,6 +647,7 @@ class MainWindow(QMainWindow):
 
     def _slow_tick(self):
         look = self.tracker.look()
+        self.map.refresh(look[1] if look else None)
         now = datetime.now().astimezone()
         if look:
             az, el, dist, _ = look
@@ -596,12 +658,12 @@ class MainWindow(QMainWindow):
         nxt = next((p for p in self.passes if p["los"] > now), None)
         if nxt:
             if nxt["aos"] <= now:
-                self.lbl_next.setText(tr("PASSAGGIO IN CORSO - fine alle {t}, el. max {el:.0f}°",
-                                         t=f"{nxt['los']:%H:%M:%S}", el=nxt["max_el"]))
+                self.lbl_next.setText(tr("PASSAGGIO IN CORSO - fine alle {t}, el. max {el}",
+                                         t=f"{nxt['los']:%H:%M:%S}", el=fmt_el(nxt["max_el"])))
             else:
                 dt = int((nxt["aos"] - now).total_seconds())
-                self.lbl_next.setText(tr("Prossimo passaggio tra {h:d}h {m:02d}m {s:02d}s (el. max {el:.0f}°)",
-                                         h=dt // 3600, m=dt % 3600 // 60, s=dt % 60, el=nxt["max_el"]))
+                self.lbl_next.setText(tr("Prossimo passaggio tra {h:d}h {m:02d}m {s:02d}s (el. max {el})",
+                                         h=dt // 3600, m=dt % 3600 // 60, s=dt % 60, el=fmt_el(nxt["max_el"])))
         elif self.passes == [] and self.tracker.ready:
             self.lbl_next.setText(tr("Nessun passaggio nelle prossime 48 h"))
         # ricalcolo passaggi quando la lista si esaurisce
@@ -609,28 +671,39 @@ class MainWindow(QMainWindow):
             self._show_passes(self.all_passes)
             if len(self.all_passes) < 3:
                 self._bg(self._compute_passes)
-        # avvio/arresto automatico (orizzonte: elevazione > -1°)
+        # avvio/arresto automatico: stesso orizzonte della tabella dei passaggi
         if self.cfg.auto_pass and look:
             el = look[1]
-            if el > -1.0 and not self.engine.running:
+            hz = self.cfg.horizon
+            if el > hz and not self.engine.running:
                 p = self._auto_pass_info()
                 max_el = p["max_el"] if p else None
                 if max_el is not None and max_el < self.cfg.auto_min_el:
                     if self._auto_skipped != p["aos"]:
                         self._auto_skipped = p["aos"]
-                        self.log_msg(tr("Avvio automatico: passaggio saltato, el. max {e:.0f}° sotto la soglia di {s:.0f}°",
-                                        e=max_el, s=self.cfg.auto_min_el))
+                        self.log_msg(tr("Avvio automatico: passaggio saltato, el. max {e} sotto la soglia di {s:.0f}°",
+                                        e=fmt_el(max_el), s=self.cfg.auto_min_el))
                 elif self._start():
                     self.auto_started = True
                     self.log_msg(tr("Avvio automatico: ISS in arrivo (el. max {e})",
-                                    e=f"{max_el:.0f}°" if max_el is not None else "?"))
+                                    e=fmt_el(max_el) if max_el is not None else "?"))
                 else:
                     self.chk_auto.setChecked(False)
                     self.log_msg(tr("Avvio automatico disattivato: libreria RTL-SDR non utilizzabile"))
-            elif el < -2.0 and self.engine.running and self.auto_started:
+            elif el < hz - 1.0 and self.engine.running and self.auto_started:
                 self._stop()
                 self.auto_started = False
                 self.log_msg(tr("Arresto automatico: ISS sotto l'orizzonte"))
+
+    def _tle_auto(self):
+        """Riscarica il TLE quando la copia locale ha più di 24 ore; durante una ricezione aspetta la fine."""
+        if self.engine.running or self.tracker.cache_age_s() < TLE_MAX_AGE_S:
+            return
+        if time.time() - self._tle_try < TLE_RETRY_S:
+            return
+        self._tle_try = time.time()
+        self.log_msg(tr("Aggiornamento automatico del TLE (copia locale più vecchia di 24 ore)"))
+        self._bg(self._load_tle_and_passes)
 
     def _offer_restart(self):
         r = QMessageBox.question(self, tr("Lingua"),
@@ -663,5 +736,6 @@ class MainWindow(QMainWindow):
         self._log_settings_diff()
         self.log_msg(tr("Programma chiuso"))
         self.session_log.close()
+        self._save_geometry()
         self.cfg.save()
         super().closeEvent(e)

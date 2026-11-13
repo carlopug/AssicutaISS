@@ -1,6 +1,6 @@
 # AssicutaISS
 
-*an ISS SSTV Receiver for Robot36*, versione 1.7 · [Read in English](README.md)
+*an ISS SSTV Receiver for Robot36*, versione 1.9 · [Read in English](README.md)
 
 Programma per Windows che riceve le immagini SSTV **Robot36** trasmesse dalla Stazione Spaziale durante gli
 eventi ARISS (437,550 MHz FM) con un dongle **RTL-SDR**. Niente SDR#/SDR++ + MMSSTV + cavo audio virtuale:
@@ -21,6 +21,10 @@ Interfaccia e schede delle immagini sono disponibili in **italiano e inglese**.
   sync; correzione automatica dello slant; protezione dai falsi avvii sul rumore.
 - **Previsione dei passaggi** per la tua stazione e **avvio/arresto automatico** facoltativo a ogni passaggio.
   Una sola soglia («con el. max ≥», predefinita 10°) filtra sia la tabella dei passaggi sia l'avvio automatico.
+  I passaggi si calcolano sopra l'**orizzonte radio** della stazione, ricavato dalla quota (586 m: -0,8°) o
+  impostato a mano nel dialogo Stazione: così non si perdono i passaggi radenti, che da un punto alto si ricevono.
+- **Mappa dell'ISS in tempo reale**: posizione, traccia a terra, zona notte e cerchio di visibilità della stazione,
+  calcolati con lo stesso TLE del Doppler. Un clic apre isstracker.pl nel browser.
 - **Attesa del dongle**: se manca, è occupato o viene scollegato, il ricevitore aspetta e riparte da solo.
 - **Ascolto** facoltativo su qualsiasi uscita audio (casse, cuffie o cavo virtuale verso un altro decoder).
 - Ogni immagine è salvata come `AAAAMMGG_HHMMSSZ.png` (UTC) con una scheda `.txt` che contiene tutti i campi
@@ -44,8 +48,9 @@ Interfaccia e schede delle immagini sono disponibili in **italiano e inglese**.
 2. Al primo avvio si apre la maschera **Stazione**: scegli la lingua e inserisci nominativo, nome, email,
    coordinate e attrezzatura. Puoi riaprirla quando vuoi con **Stazione e nominativo...**.
    Se cambi lingua, il programma propone di riavviarsi.
-3. Il TLE dell'ISS viene scaricato da Celestrak e aggiornato ogni 24 ore (resta in cache in `data/`).
-4. Controlla la tabella dei **prossimi passaggi**: quelli più alti (in verde, oltre 40°) danno le immagini migliori.
+3. Il TLE dell'ISS viene scaricato da Celestrak e aggiornato ogni 24 ore (resta in cache in `data/`), anche
+   quando il programma resta aperto (mai durante una ricezione).
+4. Controlla la tabella dei **prossimi passaggi** (in basso a destra): quelli più alti (in verde, oltre 40°) danno le immagini migliori.
 5. Premi **Avvia ricezione** qualche minuto prima dell'AOS, oppure attiva **Avvio automatico ai passaggi** e
    lascia il programma aperto.
 

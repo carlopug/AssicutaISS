@@ -1,9 +1,12 @@
 """Tracciamento ISS: TLE da Celestrak, Doppler, posizione az/el, previsione dei passaggi."""
+import math
 import os
 import threading
 import time
 import urllib.request
 from datetime import datetime, timedelta, timezone
+
+import numpy as np
 
 from . import __version__
 from .i18n import tr
@@ -12,11 +15,28 @@ from skyfield.api import EarthSatellite, load, wgs84
 C = 299_792_458.0
 TLE_URL = "https://celestrak.org/NORAD/elements/gp.php?CATNR=25544&FORMAT=tle"
 TLE_MAX_AGE_S = 24 * 3600
+EARTH_R_M = 6_371_000.0
+
+
+def radio_horizon(alt_m):
+    """Orizzonte della stazione in gradi (negativo): abbassamento dell'orizzonte dovuto alla quota.
+
+    Da una quota h l'orizzonte del mare sta acos(R / (R + h)) sotto l'orizzonte geometrico
+    (586 m -> -0,8°). La rifrazione atmosferica dà di solito un altro mezzo grado di margine, non contato.
+    """
+    h = max(0.0, float(alt_m))
+    return -round(math.degrees(math.acos(EARTH_R_M / (EARTH_R_M + h))), 1)
+
+
+def fmt_el(el):
+    """Elevazione per la GUI: un decimale vicino all'orizzonte (dove -0,4° e 0,4° sono diversi), intero altrove."""
+    return f"{el:.1f}°" if abs(el) < 10 else f"{el:.0f}°"
 
 
 class IssTracker:
     def __init__(self, cache_dir):
         self.cache_path = os.path.join(cache_dir, "iss_tle.txt")
+        self.horizon = 0.0
         self.ts = load.timescale()
         self.sat = None
         self.tle_epoch = None
@@ -54,9 +74,11 @@ class IssTracker:
         age = (datetime.now(timezone.utc) - self.tle_epoch).total_seconds() / 86400
         return (msg + "; " if msg else "") + tr("TLE epoca {d} UTC ({age:.1f} giorni)", d=f"{self.tle_epoch:%d/%m %H:%M}", age=age)
 
-    def set_station(self, lat, lon, alt_m):
+    def set_station(self, lat, lon, alt_m, horizon_deg=0.0):
+        """horizon_deg: orizzonte usato per passaggi e avvio automatico (vedi radio_horizon)."""
         with self._lock:
             self.topos = wgs84.latlon(lat, lon, elevation_m=alt_m)
+            self.horizon = float(horizon_deg)
 
     @property
     def ready(self):
@@ -89,7 +111,7 @@ class IssTracker:
         return d0, d1 - d0
 
     def pass_at(self, unix):
-        """Passaggio (orizzonte 0°) che contiene l'istante `unix`: dict aos/tca/los (datetime UTC), max_el."""
+        """Passaggio (sopra l'orizzonte della stazione) che contiene l'istante `unix`: dict aos/tca/los (datetime UTC), max_el."""
         with self._lock:
             sat, topos = self.sat, self.topos
         if sat is None or topos is None:
@@ -97,7 +119,7 @@ class IssTracker:
         t = datetime.fromtimestamp(unix, timezone.utc)
         t0 = self.ts.from_datetime(t - timedelta(minutes=20))
         t1 = self.ts.from_datetime(t + timedelta(minutes=20))
-        times, events = sat.find_events(topos, t0, t1, altitude_degrees=0.0)
+        times, events = sat.find_events(topos, t0, t1, altitude_degrees=self.horizon)
         aos = los = tca = None
         max_el = None
         for tt, e in zip(times, events):
@@ -114,7 +136,7 @@ class IssTracker:
         return {"aos": aos, "tca": tca, "los": los, "max_el": max_el}
 
     def pass_around(self, unix):
-        """Passaggio in corso o che inizia entro 30 minuti dall'istante `unix` (orizzonte 0°).
+        """Passaggio in corso o che inizia entro 30 minuti dall'istante `unix` (sopra l'orizzonte della stazione).
 
         Restituisce dict aos/tca/los (datetime UTC) e max_el, oppure None.
         """
@@ -125,7 +147,7 @@ class IssTracker:
         t = datetime.fromtimestamp(unix, timezone.utc)
         t0 = self.ts.from_datetime(t - timedelta(minutes=20))
         t1 = self.ts.from_datetime(t + timedelta(minutes=30))
-        times, events = sat.find_events(topos, t0, t1, altitude_degrees=0.0)
+        times, events = sat.find_events(topos, t0, t1, altitude_degrees=self.horizon)
         cur = {}
         for tt, e in zip(times, events):
             dt = tt.utc_datetime()
@@ -141,8 +163,8 @@ class IssTracker:
                 cur = {}
         return None
 
-    def passes(self, hours=48, min_el=0.0):
-        """Passaggi dall'orizzonte (0°) con elevazione massima >= min_el.
+    def passes(self, hours=48, min_el=-90.0):
+        """Passaggi sopra l'orizzonte della stazione (self.horizon) con elevazione massima >= min_el.
 
         dict(aos, tca, los: datetime locali, max_el: gradi); aos/los coincidono con avvio/arresto automatici.
         """
@@ -153,7 +175,7 @@ class IssTracker:
         now = datetime.now(timezone.utc)
         t0 = self.ts.from_datetime(now - timedelta(minutes=15))
         t1 = self.ts.from_datetime(now + timedelta(hours=hours))
-        times, events = sat.find_events(topos, t0, t1, altitude_degrees=0.0)
+        times, events = sat.find_events(topos, t0, t1, altitude_degrees=self.horizon)
         out, cur = [], {}
         for t, e in zip(times, events):
             dt = t.utc_datetime().astimezone()
@@ -168,3 +190,37 @@ class IssTracker:
                     out.append(cur)
                 cur = {}
         return [p for p in out if p["los"] > now.astimezone() and p["max_el"] >= min_el]
+
+    # ------------------------------------------------------------ mappa
+    def cache_age_s(self):
+        """Età in secondi della copia locale del TLE (infinito se manca)."""
+        try:
+            return time.time() - os.path.getmtime(self.cache_path)
+        except OSError:
+            return float("inf")
+
+    def _times(self, unix, offsets):
+        b = datetime.fromtimestamp(unix, timezone.utc)
+        sec = b.second + b.microsecond / 1e6 + np.asarray(offsets, float)
+        return self.ts.utc(b.year, b.month, b.day, b.hour, b.minute, sec)
+
+    def subpoint(self, unix=None):
+        """Punto sotto l'ISS: (lat°, lon°, quota km, velocità km/s) oppure None."""
+        with self._lock:
+            sat = self.sat
+        if sat is None:
+            return None
+        g = sat.at(self._t(unix))
+        sp = wgs84.subpoint_of(g)
+        speed = float(np.linalg.norm(g.velocity.km_per_s))
+        return sp.latitude.degrees, sp.longitude.degrees, wgs84.height_of(g).km, speed
+
+    def ground_track(self, unix=None, before_s=2700, after_s=5400, step_s=30):
+        """Traccia a terra attorno all'istante dato: (offset s, lat°, lon°) come array numpy, oppure None."""
+        with self._lock:
+            sat = self.sat
+        if sat is None:
+            return None
+        off = np.arange(-before_s, after_s + step_s, step_s, dtype=float)
+        sp = wgs84.subpoint_of(sat.at(self._times(time.time() if unix is None else unix, off)))
+        return off, sp.latitude.degrees, sp.longitude.degrees

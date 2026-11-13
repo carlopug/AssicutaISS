@@ -1,6 +1,6 @@
 # AssicutaISS
 
-*an ISS SSTV Receiver for Robot36*, version 1.7 · [Leggi in italiano](README.it.md)
+*an ISS SSTV Receiver for Robot36*, version 1.9 · [Leggi in italiano](README.it.md)
 
 A Windows desktop program that receives the **Robot36** SSTV images transmitted by the International Space
 Station during ARISS events (437.550 MHz FM) with an **RTL-SDR** dongle. No SDR#/SDR++ + MMSSTV + virtual
@@ -19,7 +19,11 @@ The interface and the image reports are available in **Italian and English**.
 - Robust decoder: starts on the VIS header or, if VIS is lost to fading, on the train of sync pulses;
   automatic slant correction; protection against false starts on noise.
 - **Pass prediction** for your station and optional **automatic start/stop** at each pass. A single threshold
-  ("with max el. ≥", 10° by default) filters both the passes table and auto-start.
+  ("with max el. ≥", 10° by default) filters both the passes table and auto-start. Passes are computed above
+  the station's **radio horizon**, derived from its altitude (586 m: -0.8°) or set by hand in the Station dialog,
+  so grazing passes that are still receivable from a high site are not missed.
+- **Live ISS map**: position, ground track, night zone and the visibility circle of your station, computed from
+  the same TLE used for Doppler. Click it to open isstracker.pl in the browser.
 - **Dongle hot-plug**: if the dongle is missing, busy or gets unplugged, the receiver waits and resumes on its own.
 - Optional **audio monitor** on any output device (speakers, headphones, or a virtual cable to another decoder).
 - Each image is saved as `YYYYMMDD_HHMMSSZ.png` (UTC) with a `.txt` report holding every field of the
@@ -42,8 +46,9 @@ The interface and the image reports are available in **Italian and English**.
 2. On first launch the **Station** dialog opens: choose the language and enter callsign, name, email,
    coordinates and equipment. You can reopen it at any time with **Station and callsign...**.
    Changing the language asks to restart the program.
-3. The ISS TLE is downloaded from Celestrak and refreshed every 24 hours (cached in `data/`).
-4. Check the **upcoming passes** table: the highest passes (in green, above 40°) give the best images.
+3. The ISS TLE is downloaded from Celestrak and refreshed every 24 hours (cached in `data/`), also while the
+   program stays open (never during a reception).
+4. Check the **upcoming passes** table (bottom right): the highest passes (in green, above 40°) give the best images.
 5. Press **Start receiving** a few minutes before AOS, or enable **Auto-start on passes** and leave the
    program open.
 

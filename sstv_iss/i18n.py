@@ -54,7 +54,8 @@ EN = {
     "TLE: caricamento...": "TLE: loading...",
     "Stazione e nominativo...": "Station and callsign...",
     "Aggiorna TLE": "Update TLE",
-    "Prossimi passaggi (48 h, el. max ≥ {e:.0f}°)": "Upcoming passes (48 h, max el. ≥ {e:.0f}°)",
+    "Prossimi passaggi (48 h, el. max ≥ {e:.0f}°, orizzonte {h})":
+        "Upcoming passes (48 h, max el. ≥ {e:.0f}°, horizon {h})",
     "Giorno": "Day",
     "Inizio": "Start",
     "Fine": "End",
@@ -90,9 +91,9 @@ EN = {
     "Nessun segnale": "No signal",
     "Ricevitore fermo": "Receiver stopped",
     "Imposta la posizione della stazione": "Set the station location",
-    "PASSAGGIO IN CORSO - fine alle {t}, el. max {el:.0f}°": "PASS IN PROGRESS - ends at {t}, max el. {el:.0f}°",
-    "Prossimo passaggio tra {h:d}h {m:02d}m {s:02d}s (el. max {el:.0f}°)":
-        "Next pass in {h:d}h {m:02d}m {s:02d}s (max el. {el:.0f}°)",
+    "PASSAGGIO IN CORSO - fine alle {t}, el. max {el}": "PASS IN PROGRESS - ends at {t}, max el. {el}",
+    "Prossimo passaggio tra {h:d}h {m:02d}m {s:02d}s (el. max {el})":
+        "Next pass in {h:d}h {m:02d}m {s:02d}s (max el. {el})",
     "Nessun passaggio nelle prossime 48 h": "No passes in the next 48 h",
     "Avvio automatico disattivato: libreria RTL-SDR non utilizzabile": "Auto-start disabled: RTL-SDR library not usable",
     "Arresto automatico: ISS sotto l'orizzonte": "Auto-stop: ISS below the horizon",
@@ -152,6 +153,24 @@ EN = {
     "Longitudine (E +)": "Longitude (E +)",
     "Altitudine s.l.m.": "Altitude a.s.l.",
     "Locator (calcolato)": "Locator (computed)",
+    "Orizzonte radio": "Radio horizon",
+    "Posizione ISS": "ISS position",
+    "Posizione dell'ISS calcolata dal TLE. Clic per aprire isstracker.pl nel browser":
+        "ISS position computed from the TLE. Click to open isstracker.pl in the browser",
+    "ISS {lat} {lon} · {alt:.0f} km · {v:.2f} km/s · clic: isstracker.pl":
+        "ISS {lat} {lon} · {alt:.0f} km · {v:.2f} km/s · click: isstracker.pl",
+    "TLE non disponibile": "TLE not available",
+    "Aggiornamento automatico del TLE (copia locale più vecchia di 24 ore)":
+        "Automatic TLE update (local copy older than 24 hours)",
+    "automatico dalla quota ({h})": "automatic from altitude ({h})",
+    "Elevazione sotto la quale l'ISS è considerata tramontata: vale per la tabella dei passaggi, "
+    "l'avvio e l'arresto automatici. In automatico è l'abbassamento dell'orizzonte dovuto alla quota "
+    "(586 m: -0,8°). Inserisci un valore a mano se montagne o palazzi coprono il cielo basso.":
+        "Elevation below which the ISS is considered set: used by the pass table and by automatic start and "
+        "stop. In automatic mode it is the horizon dip due to the altitude (586 m: -0.8°). Enter a value by "
+        "hand if mountains or buildings block the low sky.",
+    "{h} (automatico dalla quota)": "{h} (automatic from altitude)",
+    "{h} (impostato a mano)": "{h} (set by hand)",
     "Continente": "Continent",
     "Attrezzatura": "Equipment",
     "Dati richiesti da ARISS per caratterizzare il segnale SSTV.":
@@ -202,8 +221,8 @@ EN = {
     "almeno pari a questo valore":
         "Single threshold: the table shows and auto-start receives only passes whose maximum elevation "
         "is at least this value",
-    "Avvio automatico: passaggio saltato, el. max {e:.0f}° sotto la soglia di {s:.0f}°":
-        "Auto-start: pass skipped, max el. {e:.0f}° below the {s:.0f}° threshold",
+    "Avvio automatico: passaggio saltato, el. max {e} sotto la soglia di {s:.0f}°":
+        "Auto-start: pass skipped, max el. {e} below the {s:.0f}° threshold",
     "Avvio automatico: ISS in arrivo (el. max {e})": "Auto-start: ISS approaching (max el. {e})",
 
     # ---- schermata di avvio

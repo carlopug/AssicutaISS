@@ -23,13 +23,14 @@ from sstv_iss.gui.main_window import MainWindow  # noqa: E402
 app = QApplication.instance() or QApplication([])
 
 
-def make_window(max_el, threshold):
-    cfg = Config(lat=37.6, lon=15.07, images_dir=os.path.join(_tmp, "img"), auto_pass=True, auto_min_el=threshold)
+def make_window(max_el, threshold, alt_m=586.0):
+    cfg = Config(lat=37.6, lon=15.07, alt_m=alt_m, images_dir=os.path.join(_tmp, "img"), auto_pass=True,
+                 auto_min_el=threshold)
     w = MainWindow(cfg)
     now = datetime.now(timezone.utc)
     fake_pass = {"aos": now + timedelta(seconds=15), "tca": now + timedelta(minutes=5),
                  "los": now + timedelta(minutes=10), "max_el": max_el}
-    w.tracker.look = lambda unix=None: (120.0, -0.5, 2300.0, -6.5)   # ISS a -0,5°: soglia di avvio superata
+    w.tracker.look = lambda unix=None: (120.0, -0.5, 2300.0, -6.5)   # ISS a -0,5°: sopra l'orizzonte radio di -0,8° (586 m)
     w.tracker.pass_around = lambda unix: fake_pass
     started = []
 
@@ -55,4 +56,18 @@ def test_high_pass_starts():
     w._slow_tick()
     assert started == [True]
     assert "Avvio automatico: ISS in arrivo (el. max 30°)" in w.log.toPlainText()
+    w.engine.running = False
+
+
+def test_no_start_below_station_horizon():
+    w, started = make_window(max_el=30.0, threshold=10.0, alt_m=0.0)   # quota 0: orizzonte 0°, ISS a -0,5°
+    w._slow_tick()
+    assert not started
+
+
+def test_grazing_pass_with_negative_threshold_starts():
+    w, started = make_window(max_el=-0.1, threshold=-1.0)
+    w._slow_tick()
+    assert started == [True]
+    assert "Avvio automatico: ISS in arrivo (el. max -0.1°)" in w.log.toPlainText()
     w.engine.running = False
