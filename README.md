@@ -1,6 +1,6 @@
 # AssicutaISS
 
-*an ISS SSTV Receiver for Robot36*, version 1.6 · [Leggi in italiano](README.it.md)
+*an ISS SSTV Receiver for Robot36*, version 1.7 · [Leggi in italiano](README.it.md)
 
 A Windows desktop program that receives the **Robot36** SSTV images transmitted by the International Space
 Station during ARISS events (437.550 MHz FM) with an **RTL-SDR** dongle. No SDR#/SDR++ + MMSSTV + virtual

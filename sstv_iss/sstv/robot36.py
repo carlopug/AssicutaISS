@@ -12,13 +12,13 @@ from .common import (FS, SYNC, SYNC_PORCH, Y_SCAN, SEPARATOR, PORCH, LINE, WIDTH
 from .vis import find_vis
 
 MIN_LINES_TO_SAVE = 30      # sotto questa soglia l'immagine è considerata un falso avvio
-SYNC_LOSS_LINES = 12        # linee consecutive senza sync prima di chiudere l'immagine
-TRAIN_MIN_PULSES = 8        # sync consecutivi richiesti per partire senza VIS
-PULSE_MEDIAN_TOL = 120.0    # Hz: scostamento massimo della mediana di un sync da 1200 Hz
-PULSE_MIN_FRACTION = 0.6    # frazione minima di campioni del sync entro ±250 Hz da 1200
+SYNC_LOSS_LINES = 20        # linee consecutive senza sync prima di chiudere l'immagine (regge brevi affievolimenti)
+TRAIN_MIN_PULSES = 6        # sync consecutivi richiesti per partire senza VIS
+PULSE_MEDIAN_TOL = 150.0    # Hz: scostamento massimo della mediana di un sync da 1200 Hz
+PULSE_MIN_FRACTION = 0.45   # frazione minima di campioni del sync entro ±250 Hz da 1200
 MAX_SLANT = 0.01           # errore massimo di clock accettato (1%)
 # frazione minima di righe con il proprio sync perché l'immagine sia salvata
-MIN_SYNC_QUALITY = {"vis": 0.25, "sync": 0.5}
+MIN_SYNC_QUALITY = {"vis": 0.15, "sync": 0.3}
 
 
 class ToneDemod:

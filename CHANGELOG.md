@@ -3,6 +3,17 @@
 Numerazione MAJOR.MINOR: la minor version si incrementa a ogni modifica al programma.
 Il numero sta in `sstv_iss/__init__.py` (`__version__`) e compare nel titolo della finestra.
 
+## 1.7 - 13/11/2026
+- Decoder più tollerante sui segnali deboli (dai passaggi della notte del 12-13/11, in cui tre trasmissioni
+  vere erano state scartate come «falso avvio» dopo 83, 97 e 153 righe):
+  - l'immagine si chiude dopo 20 righe senza sync invece di 12, così regge brevi affievolimenti;
+  - avvio senza VIS con 6 sync consecutivi invece di 8;
+  - riconoscimento dei sync meno severo (mediana entro ±150 Hz, almeno il 45% dei campioni vicino a 1200 Hz);
+  - qualità minima dei sync per salvare: 0,15 con VIS e 0,30 senza VIS (prima 0,25 e 0,50).
+  Rianalizzando le 7 registrazioni del 12-13/11 escono 11 immagini (parziali comprese); per i due passaggi
+  della notte 6 invece di 2. Nessuna immagine dal solo rumore: restano il minimo di 30 righe e il controllo
+  dei separatori.
+
 ## 1.6 - 12/11/2026
 - AFC più robusto (dal passaggio delle 19:19 del 12/11, in cui una portante su un canale vicino aveva portato
   l'AFC al limite di +5 kHz per quasi tutto il passaggio):
